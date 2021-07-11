@@ -23,7 +23,7 @@ color status default default
 color tilde default default
 color tree default default
 folder-hook . 'push <first-entry>'
-folder-hook Feeds 'macro index D <first-entry><delete-pattern>~m-`echo "$(($(tput lines) - 2))"`<Return><sync-mailbox><Return>'
+folder-hook Feeds 'macro index D <first-entry><delete-pattern>~m-10<Return><sync-mailbox><Return>'
 folder-hook Feeds 'macro index,pager F <forward-message>'
 folder-hook Feeds 'macro index,pager f <pipe-message>"grep -Po '\''(?<=\^X-RSS-URL: ).+'\'' >> ~/.urls"<Return>'
 folder-hook Feeds 'set index_format="%3C %-12.12L  %s"'

@@ -15,11 +15,12 @@ URxvt.color7: Black
 URxvt.color8: Black
 URxvt.color9: Black
 URxvt.cutchars: '`"\'&()*,;<=>?@[]^{|}:'
-URxvt.font: xft:monospace:size=12
+URxvt.font: xft:monospace:size=14
 URxvt.geometry: 1000x1000
 URxvt.internalBorder: 0
 URxvt.iso14755: False
 URxvt.letterSpace: -1
+URxvt.lineSpace: 2
 URxvt.loginShell: True
 URxvt.perl-ext-common: selection-to-clipboard
 URxvt.saveLines: 0
