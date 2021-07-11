@@ -1,0 +1,11 @@
+#!/bin/bash
+set -eu
+
+unset XDG_RUNTIME_DIR
+exec xinit -- /usr/bin/Xephyr :2 \
+  -dpi 170 \
+  -fullscreen \
+  -no-host-grab \
+  -noreset \
+  -resizeable \
+  -title Xephyr
