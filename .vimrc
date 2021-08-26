@@ -115,6 +115,7 @@ function s:set_keys()
 endfunction
 
 function s:set_options()
+  autocmd SwapExists * let v:swapchoice = 'o'
   set autoindent
   set clipboard=unnamedplus
   set expandtab
