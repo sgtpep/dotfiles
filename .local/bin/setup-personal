@@ -90,7 +90,9 @@ function configure-ufw {
   for port in 22 443 80; do
     grep -q "^$port " <<< $output || sudo ufw allow "$port"
   done
-  grep -q ' active$' <<< $output || yes | sudo ufw enable
+  if ! grep -q ' active$' <<< $output; then
+    yes | sudo ufw enable
+  fi
 }
 
 function configure-unattended-upgrades {
