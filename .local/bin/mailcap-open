@@ -1,12 +1,17 @@
 #!/bin/bash
 set -eu
-find "${1%/*}" -maxdepth 1 -mtime +1 -name 'mutt-*' -type f -delete
-if [[ ${1##*/} == *.* ]]; then
+
+directory=${1%/*}
+find "$directory" -type f -mtime +1 -delete
+
+filename=${1##*/}
+if [[ $filename == *.* ]]; then
   command=xdg-open
-  path=${1%/*}/mutt-${1##*/}
+  path=$directory/.$filename
 else
   command=x-www-browser
   path=$1.html
 fi
-mv -f "$1" "$path"
+
+mv "$1" "$path"
 setsid "$command" "$path" &> /dev/null &

@@ -8,11 +8,11 @@ fi
 
 branch=$(git remote show origin | grep ' HEAD branch:' | cut -d ' ' -f 5)
 git checkout "${-$branch}"
+
 git pull --stat
 git checkout -b "$1"
+
 ref=$(git rev-parse --abbrev-ref HEAD)
 git push -u origin "$ref"
 
-if [[ ${stashed-} ]]; then
-  git stash pop
-fi
+[[ ! ${stashed-} ]] || git stash pop

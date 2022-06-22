@@ -1,16 +1,6 @@
 #!/bin/bash
 set -eu
 
-function copy-article {
-  rsync -ahsz --progress "$@"
-}
-
-articles=articles
-
-function list-articles {
-  ssh personal ls "$articles"
-}
-
 function sanitize-filename {
   local filename=${1//$'\0'/ }
   filename=${filename//$'\n'/ }
@@ -23,6 +13,7 @@ function sanitize-filename {
   filename=${filename//>/＞}
   filename=${filename//|/❘}
   filename=${filename//\?/？}
+
   sed -f - <(echo "$filename") << \EOF
 s/\s\+/ /g
 s/^\s*//
@@ -30,13 +21,24 @@ s/\s*$//
 EOF
 }
 
+function copy-article {
+  rsync -ahsz --progress "$@"
+}
+
+articles_path=articles
+
+function list-articles {
+  ssh personal ls "$articles_path"
+}
+
 function download-articles {
   local path=/media/$USER/Kindle
   local filename
   while IFS= read -r filename; do
-    local article=$articles/$filename
-    copy-article personal:"$article" "$path"/documents/"$articles"/"$(sanitize-filename "${filename%.*}")".pdf
-    ssh personal xargs -d '\\n' rm <<< $article
+    local article_path=$articles_path/$filename
+    local sanitized_filename=$(sanitize-filename "${filename%.*}")
+    copy-article personal:"$article_path" "$path"/documents/"$articles_path"/"$sanitized_filename".pdf
+    ssh personal xargs -d '\\n' rm <<< "$article_path"
   done < <(list-articles)
 }
 
@@ -45,7 +47,6 @@ function install-packages {
     chromium
     libimage-exiftool-perl
     poppler-utils
-    rsync
   )
   dpkg -s "${packages[@]}" &> /dev/null || sudo apt -y install "${packages[@]}"
 }
@@ -70,19 +71,49 @@ function parse-options {
   done
 }
 
-function confirm-upload {
-  read -p "Upload '$1'? [Y/n] "
-  [[ $REPLY =~ ^[Yy]*$ ]]
-}
-
-function deactivate-links {
-  local string='/S /URI'
-  sed -i "s|$string\b|$(printf "%${#string}s")|g" "$1"
+function rewrite-url {
+  if [[ $1 == https://habr.com/* ]]; then
+    echo "${1/\/\////m.}"
+  else
+    echo "$1"
+  fi
 }
 
 function output-path {
-  local checksum=$(md5sum <<< $1)
-  echo "$XDG_RUNTIME_DIR"/"${checksum%% *}"
+  local directory=~/.cache/${0##*/}
+  mkdir -p "$directory"
+
+  find "$directory" -type f -mtime +1 -delete
+
+  local checksum=$(md5sum <<< "$1")
+  echo "$directory"/"${checksum%% *}".pdf
+}
+
+function extract-pdf-title {
+  pdfinfo "$1" | grep '^Title:' | sed 's/^[^:]*:\s*\(.*\)\s*$/\1/'
+}
+
+function extract-filename {
+  local url=${1%\?*}
+  local filename=${url##*/}
+  echo "${title//%20/ }"
+}
+
+function process-pdf {
+  wget -O "$2" "$1"
+
+  local title=$(extract-pdf-title "$2")
+  if [[ ! $title ]]; then
+    local filename=$(extract-filename "$1")
+    title=${filename%.pdf}
+  fi
+  echo "$title"
+}
+
+function install-puppeteer {
+  local package=puppeteer-core
+  local version=7.1.0
+  grep -qs "\"$version\"" "$NPM_CONFIG_PREFIX"/lib/node_modules/"$package"/package.json || npm install -g "$package"@"$version" >&2
 }
 
 function extract-host {
@@ -91,6 +122,13 @@ function extract-host {
   [[ $host != *.medium.com ]] || host=${host#*.}
   echo "$host"
 }
+
+declare -A javascript_enabled_hosts=(
+  [m.habr.com]=true
+  [www.theatlantic.com]=true
+)
+
+declare -A print_media_hosts=()
 
 declare -A host_scales=()
 
@@ -101,26 +139,22 @@ declare -A host_styles=(
   [medium.com]='#root > div > :nth-child(2) { display: none }'
 )
 
-function install-puppeteer {
-  local package=puppeteer-core
-  local version=7.1.0
-  grep -qs "\"$version\"" "$NPM_CONFIG_PREFIX"/lib/node_modules/"$package"/package.json || npm install -g "$package"@"$version" >&2
-}
-
-declare -A javascript_enabled_hosts=(
-  [m.habr.com]=true
-  [www.theatlantic.com]=true
-)
-
-declare -A print_media_hosts=()
-
 declare -A styles_disabled_hosts=()
 
 function process-html {
   install-puppeteer
+
   echo -n "Processing $1..." >&2
+
   local host=$(extract-host "$1")
-  NODE_PATH="$NPM_CONFIG_PREFIX"/lib/node_modules javascript_enabled=${javascript_enabled-${javascript_enabled_hosts[$host]-}} print_media=${print_media-${print_media_hosts[$host]-}} scale=${scale-${host_scales[$host]-1.375}} script=${script-${host_scripts[$host]-}} style=${style-${host_styles[$host]-}} styles_disabled=${styles_disabled-${styles_disabled_hosts[$host]-}} node - "$1" "$2" << \EOF
+  NODE_PATH="$NPM_CONFIG_PREFIX"/lib/node_modules \
+  javascript_enabled=${javascript_enabled-${javascript_enabled_hosts[$host]-}} \
+  print_media=${print_media-${print_media_hosts[$host]-}} \
+  scale=${scale-${host_scales[$host]-1.375}} \
+  script=${script-${host_scripts[$host]-}} \
+  style=${style-${host_styles[$host]-}} \
+  styles_disabled=${styles_disabled-${styles_disabled_hosts[$host]-}} \
+  node - "$1" "$2" << \EOF
 const puppeteer = require("puppeteer-core");
 
 (async () => {
@@ -135,38 +169,54 @@ const puppeteer = require("puppeteer-core");
       },
       executablePath: "chromium",
     });
+
     const page = await browser.newPage();
     await page.emulateMediaType(process.env.print_media ? "print" : "screen");
+    await page.setUserAgent(
+      "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Mobile Safari/537.36"
+    );
+
     const javaScriptEnabled = Boolean(
       process.env.javascript_enabled ||
         process.env.style ||
         process.env.styles_disabled
     );
     await page.setJavaScriptEnabled(javaScriptEnabled);
-    await page.setUserAgent(
-      "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Mobile Safari/537.36"
-    );
+
     await page.goto(process.argv[2], { timeout: 60000 });
+
     await page.evaluate(
       (script, stylesDisabled) => {
         [...document.querySelectorAll("*")].forEach((element) => {
           const style = getComputedStyle(element);
-          ["fixed", "sticky"].includes(style.position) &&
+          if (["fixed", "sticky"].includes(style.position)) {
             element.setAttribute("style", "display: none !important");
-          style.overflow === "auto" && (element.style.overflow = "visible");
-          style.whiteSpace === "pre" && (element.style.whiteSpace = "pre-wrap");
+          }
+          if (style.overflow === "auto") {
+            element.style.overflow = "visible";
+          }
+          if (style.whiteSpace === "pre") {
+            element.style.whiteSpace = "pre-wrap";
+          }
         });
+
         eval(script);
-        stylesDisabled &&
-          [
-            ...document.querySelectorAll('link[rel="stylesheet"], style'),
-          ].forEach((element) => element.remove());
+
+        if (stylesDisabled) {
+          const elements = document.querySelectorAll(
+            'link[rel="stylesheet"], style'
+          );
+          for (element of elements) {
+            element.remove();
+          }
+        }
       },
       process.env.script,
       process.env.styles_disabled
     );
-    javaScriptEnabled &&
-      (await page.addStyleTag({
+
+    if (javaScriptEnabled) {
+      await page.addStyleTag({
         content: `
         table { border: 1px solid black }
         td, th, tr { border: none }
@@ -177,8 +227,10 @@ const puppeteer = require("puppeteer-core");
         ${
           process.env.styles_disabled && "body { font: 1.5em / 1.5 sans-serif }"
         }
-      `.replace(/;| }/g, " !important$&"),
-      }));
+        `.replace(/;| }/g, " !important$&"),
+      });
+    }
+
     await page.pdf({
       height: 735,
       path: process.argv[3],
@@ -186,7 +238,9 @@ const puppeteer = require("puppeteer-core");
       scale,
       width,
     });
+
     console.log(await page.title());
+
     await browser.close();
   } catch (error) {
     console.error();
@@ -195,40 +249,23 @@ const puppeteer = require("puppeteer-core");
   }
 })();
 EOF
+
   echo >&2
 }
 
-function extract-filename {
-  local url=${1%\?*}
-  local filename=${url##*/}
-  echo "${title//%20/ }"
+function deactivate-links {
+  local string='/S /URI'
+  sed -i "s|$string\b|$(printf "%${#string}s")|g" "$1"
 }
 
-function extract-pdf-title {
-  pdfinfo "$1" | grep '^Title:' | sed 's/^[^:]*:\s*\(.*\)\s*$/\1/'
-}
-
-function process-pdf {
-  wget -O "$2" "$1"
-  local title=$(extract-pdf-title "$2")
-  if [[ ! $title ]]; then
-    local filename=$(extract-filename "$1")
-    title=${filename%.pdf}
-  fi
-  echo "$title"
-}
-
-function rewrite-url {
-  if [[ $1 == https://habr.com/* ]]; then
-    echo "${1/\/\////m.}"
-  else
-    echo "$1"
-  fi
+function confirm-upload {
+  read -p "Upload '$1'? [Y/n] "
+  [[ $REPLY =~ ^[Yy]*$ ]]
 }
 
 function truncate-filename {
   local filename=$1
-  while (($(wc -c <<< $filename) > 255)); do
+  while (($(wc -c <<< "$filename") > 255)); do
     local suffix=.${filename##*.}
     filename=${filename::-$((${#suffix} + 1))}$suffix
   done
@@ -240,40 +277,48 @@ function upload-article {
   if list-articles | grep -Fqx "$filename"; then
     echo "'$filename' already exists." >&2
     return 1
-  else
-    copy-article "$1" personal:"$articles"/"$filename"
   fi
+
+  copy-article "$1" personal:"$articles_path"/"$filename"
 }
 
 function process-url {
   set -- "$(rewrite-url "$1")"
-  local path=$(output-path "$1").pdf
-  touch "$path"
+
+  local path=$(output-path "$1")
+
   if [[ ${1%\?*} == *.pdf ]]; then
     local title=$(process-pdf "$1" "$path")
   else
     local title=$(process-html "$1" "$path")
   fi
+
   [[ -f $path ]]
+
   deactivate-links "$path"
   exiftool -q -overwrite_original -Author="$1" "$path"
+
   setsid xdg-open "$path" &> /dev/null &
+
   ! confirm-upload "$title" || upload-article "$path" "$title"
   rm "$path"
 }
 
 function main {
+  if [[ ! $@ ]]; then
+    download-articles
+    return
+  fi
+
   install-packages
+
   parse-options "$@"
   shift "$((OPTIND - 1))"
-  if [[ $@ ]]; then
-    local url
-    for url; do
-      process-url "$url"
-    done
-  else
-    download-articles
-  fi
+
+  local url
+  for url; do
+    process-url "$url"
+  done
 }
 
 [[ -v BASH_SOURCE[0] && ${BASH_SOURCE[0]##*/} != ${0##*/} ]] || main "$@"

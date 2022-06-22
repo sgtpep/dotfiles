@@ -1,19 +1,59 @@
 #!/bin/bash
 set -eu
 
+function run-actions {
+  [[ $@ ]] || return 0
+
+  local rsync=(rsync -FOahvz --progress)
+  local path=~/Downloads/personal
+  if [[ $1 == backup ]]; then
+    "${rsync[@]}" --delete personal: "$path"
+  elif [[ $1 == restore ]]; then
+    "${rsync[@]}" -u "$path"/ personal:
+  else
+    local status 1
+  fi
+  return "${status-0}"
+}
+
+function setup-user {
+  ! ssh personal '[[ -d ~/.ssh ]]' || return 0
+
+  local timezone=$(readlink /etc/localtime | sed 's|^/usr/share/zoneinfo/||')
+  local user=danil
+  local password=$(sudo grep -Po "(?<=^$user:)[^:]+" /etc/shadow)
+  ssh root@personal bash -"$-" << EOF
+  timedatectl set-timezone '$timezone'
+  id '$user' &> /dev/null || useradd -m -G sudo -s /bin/bash '$user'
+  chpasswd -e <<< '$user:$password'
+
+  path=~/.ssh
+  cp -r "\$path" ~$user
+  chown -R '$user': ~$user"\${path#~}"
+EOF
+}
+
+function run-script {
+  ssh -t personal "set -$-; $(< "${BASH_SOURCE[0]}")"
+}
+
 function configure-apt-sources {
   local release=$(lsb_release -cs)
   sudo tee /etc/apt/sources.list > /dev/null << EOF
 deb http://deb.debian.org/debian $release main
-deb http://security.debian.org/debian-security $release/updates main
+deb https://security.debian.org/ $release-security main
 EOF
 }
 
-function confirm-reboot {
-  if [[ -f /run/reboot-required ]]; then
-    read -p 'Reboot? [Y/n] '
-    [[ ! $REPLY =~ ^[Yy]*$ ]] || sudo reboot
-  fi
+function upgrade-system {
+  local path=/var/lib/apt/upgraded
+  [[ ! -f $path ]] || return 0
+
+  sudo apt update
+  sudo APT_LISTCHANGES_FRONTEND=none DEBIAN_FRONTEND=noninteractive apt -y -o Dpkg::Options::=--force-confnew full-upgrade
+  sudo apt -y autoremove --purge
+
+  sudo touch "$path"
 }
 
 function install-packages {
@@ -31,37 +71,14 @@ function install-packages {
     tmux
     ufw
     unattended-upgrades
-    uwsgi
-    uwsgi-plugin-python3
   )
   dpkg -s "${packages[@]}" &> /dev/null || sudo apt -y install "${packages[@]}"
 }
 
-function run-actions {
-  if [[ $@ ]]; then
-    local options=(-FOahvz --progress)
-    local path=~/Downloads/personal
-    if [[ $1 == backup ]]; then
-      exec rsync "${options[@]}" --delete personal: "$path"
-    elif [[ $1 == restore ]]; then
-      exec rsync "${options[@]}" -u "$path"/ personal:
-    else
-      return 1
-    fi
-  fi
-}
-
-function run-script {
-  ssh -t personal "set -$-; $(< "${BASH_SOURCE[0]}")"
-}
-
-function download-dotfile {
-  local path=~/$1
-  if [[ ! -f $path ]]; then
-    mkdir -p "${path%/*}"
-    wget -O "$path" https://raw.githubusercontent.com/sgtpep/dotfiles/master/"$1"
-  fi
-  [[ $path != ~/.local/bin/* ]] || chmod +x "$path"
+function add-notes-key {
+  local line='command="git-shell -c \"$SSH_ORIGINAL_COMMAND\"" ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDl6Kwgr7jj0ZchaHfAj1PUgkgVKQTuPoTnw0tQ9ef2mQv2fKDCW2ZCA3LM5/cIuMupgJWd35RnP6i6oI58IYEC+wNcf8Fa3GvMg4woUVWqalf8fo7SFJMA7NhbEjT0W7ui05I2nR5+FYMtelIQRioTs4NuRu7xZP8UcCAT0r9D6VQtcB3CPhA2HHokvdypcTFd/Nt8k1Sh02XsQSVsgBydZ5nKfFLBqpS5GEFjwTXgjQVpntyMmG0W/+f7GllpANnlgBIBWwaCPJcaWKmPPHFGY3uZJ4HGiQsG/fVEdqjjlEsfRQPkWZwEmK6SknVgFGgKf3HXZWVSRg5T1JRAwvSYb4pP22tnrp74Dc3TG6JSAjVAvRL/FusReswKy5Qj08FbqGqNEI/o6C/UW/ZOGSNeAkQt4iEj+Ianzkb0202ywxbkOEqLyk4wWxx0jCWSyRhiZWQvBaZTG1UA4pu4IQP8Kascrswij5v5NlkizgtlpWR/YxpiX9tiIXQp3JPTfYk= notes'
+  local path=~/.ssh/authorized_keys
+  grep -Fqx "$line" "$path" || echo "$line" >> "$path"
 }
 
 email=mail'@'danil.mobi
@@ -69,30 +86,30 @@ email=mail'@'danil.mobi
 function configure-msmtp {
   local aliases_path=/etc/aliases
   sudo tee "$aliases_path" > /dev/null <<< "default: $email"
+
   local netrc_path=~/.netrc
+  local host=$(grep -Po '(?<=\bmachine\s)\s*mail\.[^\s]+' "$netrc_path")
   sudo tee /etc/msmtprc > /dev/null << EOF
 account default
   aliases $aliases_path
   auth on
   from $email
-  host $(grep -Po '(?<=\bmachine\s)\s*smtp\.[^\s]+' "$netrc_path")
+  host $host
   port 587
   tls on
   tls_trust_file /etc/ssl/certs/ca-certificates.crt
   user $email
 EOF
-  sudo ln -fs "$netrc_path" /etc/netrc
+  sudo ln -fs "$netrc_path" /etc/"${netrc_path#~/.}"
 }
 
 function configure-ufw {
   local output=$(sudo ufw status)
   local port
   for port in 22 443 80; do
-    grep -q "^$port " <<< $output || sudo ufw allow "$port"
+    grep -q "^$port " <<< "$output" || sudo ufw allow "$port"
   done
-  if ! grep -q ' active$' <<< $output; then
-    yes | sudo ufw enable
-  fi
+  grep -q ' active$' <<< "$output" || yes | sudo ufw enable
 }
 
 function configure-unattended-upgrades {
@@ -107,9 +124,20 @@ function schedule-rss2email {
 EOF
 }
 
+function download-dotfile {
+  local path=~/$1
+  if [[ ! -f $path ]]; then
+    mkdir -p "${path%/*}"
+    wget -O "$path" https://raw.githubusercontent.com/sgtpep/dotfiles/master/"$1"
+  fi
+
+  [[ $path != ~/.local/bin/* ]] || chmod +x "$path"
+}
+
 function setup-gallery {
   local command=generate-gallery
   download-dotfile .local/bin/"$command"
+
   sudo tee /etc/cron.d/"$command" > /dev/null << EOF
 PATH=/usr/bin:/bin:$HOME/.local/bin
 0 0 */5 * * $USER $command ~/.config/gallery/config ~/www/gallery
@@ -124,18 +152,24 @@ www_path=/var/www/html
 function setup-certbot {
   local path=/etc/letsencrypt/cli.ini
   [[ ! $(tail -c 1 "$path") ]] || sudo tee -a "$path" > /dev/null <<< ''
+
   local name=post-hook
   grep -q "^$name " "$path" || sudo tee -a "$path" > /dev/null <<< "$name = systemctl reload nginx"
+
   [[ -d ${path%/*}/live ]] || sudo certbot certonly -d "$hostname" -m "$email" -w "$www_path" --agree-tos --no-eff-email --webroot
 }
 
 function setup-nginx {
   setup-certbot
+
   sudo rm -fr "$www_path"
   sudo ln -fs ~/www "$www_path"
+
   sudo usermod -a -G adm "$USER"
+
   local path=/etc/nginx/sites-enabled/default
   local checksum=$(md5sum "$path")
+
   local certificate=/etc/letsencrypt/live/$hostname
   sudo tee "$path" > /dev/null << EOF
 server {
@@ -169,16 +203,14 @@ server {
   }
 }
 EOF
-  md5sum -c --status <<< $checksum || sudo systemctl reload nginx
-}
 
-function setup-notes {
-  download-dotfile .local/bin/notes-server
+  md5sum -c --status <<< "$checksum" || sudo systemctl reload nginx
 }
 
 function setup-tasks {
   local command=tasks
   download-dotfile .local/bin/"$command"
+
   local mail='mail -E -a "Date: $(date -R)" -s'
   sudo tee /etc/cron.d/"$command" > /dev/null << EOF
 PATH=/usr/bin:/bin:$HOME/.local/bin
@@ -189,51 +221,36 @@ EOF
 }
 
 function setup-system {
+  add-notes-key
   configure-msmtp
   configure-ufw
   configure-unattended-upgrades
   schedule-rss2email
   setup-gallery
   setup-nginx
-  setup-notes
   setup-tasks
 }
 
-function setup-user {
-  if ! ssh personal '[[ -d ~/.ssh ]]'; then
-    ssh root@personal bash -"$-" << EOF
-    timedatectl set-timezone '$(readlink /etc/localtime | sed 's|^/usr/share/zoneinfo/||')'
-    id $USER &> /dev/null || useradd -m -G sudo -s /bin/bash $USER
-    chpasswd -e <<< '$USER:$(sudo grep -Po "(?<=^$USER:)[^:]+" /etc/shadow)'
-    dirname=.ssh
-    cp -r ~/"\$dirname" ~$USER
-    chown -R $USER: ~$USER/"\$dirname"
-EOF
-  fi
-}
+function confirm-reboot {
+  [[ -f /run/reboot-required ]] || return 0
 
-function upgrade-system {
-  local path=/var/lib/apt/upgraded
-  if [[ ! -f $path ]]; then
-    sudo apt update
-    sudo APT_LISTCHANGES_FRONTEND=none DEBIAN_FRONTEND=noninteractive apt -y -o Dpkg::Options::=--force-confnew full-upgrade
-    sudo apt -y autoremove --purge
-    sudo touch "$path"
-  fi
+  read -p 'Reboot? [Y/n] '
+  [[ ! $REPLY =~ ^[Yy]*$ ]] || sudo reboot
 }
 
 function main {
-  if [[ -v SSH_CONNECTION ]]; then
-    configure-apt-sources
-    upgrade-system
-    install-packages
-    setup-system
-    confirm-reboot
-  else
+  if [[ ! -v SSH_CONNECTION ]]; then
     run-actions "$@"
     setup-user
     run-script
+    exit
   fi
+
+  configure-apt-sources
+  upgrade-system
+  install-packages
+  setup-system
+  confirm-reboot
 }
 
 [[ -v BASH_SOURCE[0] && ${BASH_SOURCE[0]##*/} != ${0##*/} ]] || main "$@"

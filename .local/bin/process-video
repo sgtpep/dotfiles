@@ -1,14 +1,14 @@
 #!/bin/bash
 set -eu
-. process-photo
 
 function convert-video {
-  if [[ $1 != *.mp4 ]] || ! ffprobe "$1" |& grep -q ' encoder '; then
-    local path=${1%.*}~.mp4
-    ffmpeg -y -i "$1" -vf 'scale=-2:min(ih\, 720)' "$path"
-    rm -f "$1"
-    mv "$path" "${1%.*}".mp4
-  fi
+  [[ $1 != *.mp4 ]] || ! ffprobe "$1" |& grep -q ' encoder ' || return 0
+
+  local path=${1%.*}~.mp4
+  ffmpeg -y -i "$1" -vf 'scale=-2:min(ih\, 720)' "$path"
+
+  rm -f "$1"
+  mv "$path" "${1%.*}".mp4
 }
 
 function convert-videos {
@@ -18,20 +18,16 @@ function convert-videos {
   done
 }
 
-function install-packages {
-  local packages=(
-    ffmpeg
-  )
-  dpkg -s "${packages[@]}" &> /dev/null || sudo apt -y install "${packages[@]}"
-}
-
 function main {
-  install-packages
+  . process-photo
+
   [[ $@ ]] || set -- .
+
   local path
   for path; do
     [[ -d $path ]]
     local directory=${path%/}
+
     lowercase-extensions "$directory"/*.{3GP,AVI,MOV,MP4}
     rename-dated "$directory"/*.{3gp,avi,mov,mp4}
     rename-whatsapp "$directory"/*.mp4

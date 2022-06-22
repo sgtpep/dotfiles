@@ -22,5 +22,6 @@ function rg {
 }
 
 function sshuttle {
-  command sshuttle -r personal -x "$(ssh -G personal | grep -Po '(?<=^hostname ).+')" --dns 0/0 |& grep -v DeprecationWarning
+  local subnet=$(ssh -G personal | grep -Po '(?<=^hostname ).+')
+  command sshuttle -r personal -x "$subnet" --dns 0/0 |& grep -v DeprecationWarning
 }

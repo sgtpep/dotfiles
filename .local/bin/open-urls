@@ -1,0 +1,33 @@
+#!/bin/bash
+set -eu
+
+function write-file {
+  local path=$1~
+  cat > "$path"
+  mv "$path" "$1"
+}
+
+path=~/.urls
+while [[ -s $path ]]; do
+  uniq "$path" | write-file "$path"
+
+  length=10
+  urls=$(head -n "$length" "$path")
+  status=0
+  errors=$(xargs -r x-www-browser <<< "$urls" 2>&1) || status=$?
+
+  if [[ $status != 0 ]]; then
+    if [[ $errors == *'OpenUrl rate limit exceeded'* ]]; then
+      sleep 15
+      continue
+    else
+      exit "$status"
+    fi
+  fi
+
+  log_path=$path-log
+  echo "$urls" >> "$log_path"
+  tail -n 100 "$log_path" | write-file "$log_path"
+
+  sed -i "1,${length}d" "$path"
+done

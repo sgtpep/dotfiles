@@ -1,14 +1,16 @@
 #!/bin/bash
 set -eu
-package=ffmpeg
-dpkg -s "$package" &> /dev/null || sudo apt -y install "$package"
+
 path=${1%.*}~.${1##*.}
+
 if [[ $2 == concat ]]; then
   arguments=("${@:3}")
   input=$XDG_RUNTIME_DIR/ffmpeg-input
   printf 'file %q\n' "$1" "${arguments[@]}" > "$input"
+
   ffmpeg -f concat -safe 0 -i "$input" -c copy "$path"
   rm "$input"
+
   for argument in "${arguments[@]}"; do
     mv "$argument" "${argument%/*}"/."${argument##*/}"
   done
@@ -17,5 +19,6 @@ elif [[ $2 == cut ]]; then
 elif [[ $2 == rotate ]]; then
   ffmpeg -i "$1" -c copy -metadata:s:v rotate="$3" "$path"
 fi
+
 mv "$1" "${1%/*}"/."${1##*/}"
 mv "$path" "$1"

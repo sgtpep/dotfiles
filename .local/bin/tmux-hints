@@ -1,6 +1,37 @@
 #!/bin/bash
 set -eu
 
+function join-text {
+  local columns=$(tput cols)
+  if [[ ${1##*$'\n'} == *' -- ('*')' ]]; then
+    local width=80
+    (($columns < $width)) || columns=$width
+  fi
+
+  local line
+  while IFS= read -r line; do
+    echo -n "$line"
+    [[ ! ${line: -1} =~ [[:space:]] ]] && ((${#line} >= $columns)) || echo
+  done <<< "$1"
+}
+
+function read-text {
+  local path=$XDG_RUNTIME_DIR/${0##*/}
+  local text=$(< "$path")
+  rm "$path"
+  join-text "$text"
+}
+
+pattern='\bhttps?://[^][:space:]"<]*[-[:alnum:]/]'
+
+function parse-urls {
+  local text=$1
+  while [[ $text =~ $pattern ]]; do
+    echo "${BASH_REMATCH[0]}"
+    text=${text#*"${BASH_REMATCH[0]}"}
+  done
+}
+
 characters=fdsagrewcx
 
 function generate-label {
@@ -11,11 +42,9 @@ function generate-label {
   done < <(printf "%0${#2}d" "$1")
 }
 
-pattern='\bhttps?://[^][:space:]"]*[[:alnum:]/-]'
-
 function hintify-text {
-  local index=0
   local text=$1
+  local index=0
   while [[ $text =~ $pattern ]]; do
     local label=$(generate-label "$index" "$2")
     printf "%s\e[7m%s\e[m%s" "${text%%"${BASH_REMATCH[0]}"*}" "$label" "${BASH_REMATCH[0]:${#label}}"
@@ -25,74 +54,47 @@ function hintify-text {
   echo -n "$text"
 }
 
-function is-mutt {
-  [[ ${1##*$'\n'} == *' -- ('*')' ]]
-}
-
-function join-text {
-  local columns=$(tput cols)
-  if is-mutt "$1"; then
-    local width=80
-    (($columns < $width)) || columns=$width
-  fi
-  local line
-  while IFS= read -r line; do
-    echo -n "$line"
-    [[ ! ${line: -1} =~ [[:space:]] ]] && ((${#line} >= $columns)) || echo
-  done <<< $1
-}
-
 function output-text {
   printf '\e[?25l%s' "${1%$'\n'}"
   tmux select-window -t url
 }
 
-function parse-urls {
-  local text=$1
-  while [[ $text =~ $pattern ]]; do
-    echo "${BASH_REMATCH[0]}"
-    text=${text#*"${BASH_REMATCH[0]}"}
-  done
-}
-
 function process-input {
   local number=
-  local count=$#
   local index
-  for ((index=0; index < ${#count}; index++)); do
+  for ((index=0; index < ${##}; index++)); do
     local character
     read -s -n 1 character
     local lowercase_character=${character,}
     [[ $characters == *$lowercase_character* ]] || return
-    local tail=${characters%%$lowercase_character*}
-    [[ ${#tail} == 0 && ! $number ]] || number=$number${#tail}
-  done
-  local url=${@:$number + 1:1}
-  if [[ $url ]]; then
-    if [[ $character == $lowercase_character ]]; then
-      setsid x-www-browser "$url" &> /dev/null &
-      sleep 0.1
-    else
-      echo "$url" >> ~/.urls
-    fi
-  fi
-}
 
-function read-text {
-  local path=$XDG_RUNTIME_DIR/${0##*/}
-  local text=$(< "$path")
-  rm "$path"
-  join-text "$text"
+    local tail=${characters%%$lowercase_character*}
+    [[ ${#tail} == 0 && ! $number ]] || number+=${#tail}
+  done
+
+  local url=${@:$number + 1:1}
+  [[ $url ]] || return 0
+
+  if [[ $character != $lowercase_character ]]; then
+    echo "$url" >> ~/.urls
+    return
+  fi
+
+  setsid x-www-browser "$url" &> /dev/null &
+  sleep 0.1
 }
 
 function main {
   local text=$(read-text)
+
   local urls
   mapfile -t urls < <(parse-urls "$text")
-  if [[ ${urls[@]} ]]; then
-    output-text "$(hintify-text "$text" "${#urls[@]}")"
-    process-input "${urls[@]}"
-  fi
+  [[ ${urls[@]} ]] || return 0
+
+  local hintified_text=$(hintify-text "$text" "${#urls[@]}")
+  output-text "$hintified_text"
+
+  process-input "${urls[@]}"
 }
 
 [[ -v BASH_SOURCE[0] && ${BASH_SOURCE[0]##*/} != ${0##*/} ]] || main "$@"

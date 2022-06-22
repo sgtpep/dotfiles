@@ -2,10 +2,10 @@
 new-branch = !git-new-branch
 
 [core]
-pager = diff-highlight | less
+pager = git-diff-highlight | less
 
 [interactive]
-diffFilter = diff-highlight
+diffFilter = git-diff-highlight
 
 [pager]
 status = true

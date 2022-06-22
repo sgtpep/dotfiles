@@ -1,48 +1,28 @@
 #!/bin/bash
 set -eu
 
-function install-npm-completions {
-  local path=~/.local/share/bash-completion/completions/npm
-  if [[ ! -f $path ]]; then
-    mkdir -p "${path%/*}"
-    PATH=~/.npm/bin:$PATH npm completion > "$path"
-  fi
-}
-
-function install-node {
-  local prefix=~/.npm
-  if [[ ! -x $prefix/bin/node ]]; then
-    local arch=$(arch)
-    arch=${arch/aarch64/arm64}
-    arch=${arch/x86_64/x64}
-    local version=14.0.0
-    local url=https://nodejs.org/dist/v$version/node-v$version-linux-$arch.tar.xz
-    local path=$XDG_RUNTIME_DIR/${url##*/}
-    wget -O "$path" "$url" || rm -f "$path"
-    tar -x -C "${path%/*}" -f "$path"
-    NPM_CONFIG_PREFIX=$prefix PATH=${path%.*.*}/bin:$PATH npm install -g node npm
-  fi
-  install-npm-completions
-}
-
 function install-packages {
   local packages=(
-    adb
     apcalc
-    bsdmainutils
+    bash{,-completion}
+    bc
     curl
     exiftran
-    firejail xpra-
+    ffmpeg
     gimp
     git
+    gnupg
     graphicsmagick-imagemagick-compat
     htop
-    mupdf
+    libnotify-bin
+    man-db
     mutt
+    ncal
     ncdu
+    openssh-client
     pass
     python3-pip
-    rclone
+    rclone fuse
     ripgrep
     rsync
     rxvt-unicode
@@ -52,18 +32,22 @@ function install-packages {
     tmux
     unzip
     vifm
-    vim-gtk3
+    vim-gtk
     w3m
+    wget
     xsel
+    zip
   )
+
   local dpkg_packages=(${packages[@]/%*-})
-  dpkg -s "${dpkg_packages[@]}" &> /dev/null || sudo DEBIAN_FRONTEND=noninteractive apt -y install "${packages[@]}"
+  ! dpkg -s "${dpkg_packages[@]}" &> /dev/null || return 0
+
+  [[ -d /var/cache/apt/archives ]] || sudo apt update
+  sudo DEBIAN_FRONTEND=noninteractive apt -y install "${packages[@]}"
 }
 
-pip_path=~/.pip
-
 function patch-pwdhash {
-  sed -i $'s/\\bsys\.stdout\.write(generated\\b.*/import subprocess; subprocess.run([\'xsel\', \'-b\'], input=generated.encode(\'utf8\'))/' "$pip_path"/lib/python3.*/site-packages/pwdhash.py
+  sed -i $'s/sys\.stdout\.write(generated.*/import subprocess; subprocess.run([\'xsel\', \'-b\'], input=generated.encode(\'utf8\'))/' "$1"
 }
 
 function install-pip-packages {
@@ -71,30 +55,107 @@ function install-pip-packages {
     pwdhash.py
     youtube_dl
   )
+
+  local pip_path=~/.pip
+  function package-path {
+    echo "$pip_path"/lib/python3.*/site-packages/"$1"
+  }
+
   local package
   for package in "${packages[@]}"; do
-    ls "$pip_path"/lib/python3.*/site-packages/"$package" &> /dev/null || PYTHONUSERBASE=$pip_path pip3 install "$package"
+    local path=$(package-path "$package")
+    [[ -e $path ]] || PYTHONUSERBASE=$pip_path pip3 install "$package"
+
+    [[ $package == pwdhash.py ]] || continue
+
+    local path=$(package-path "$package")
+    patch-pwdhash "$path"
   done
-  patch-pwdhash
+}
+
+function install-node {
+  local prefix=~/.npm
+  [[ ! -x $prefix/bin/node ]] || return 0
+
+  local arch=$(arch)
+  arch=${arch/aarch64/arm64}
+  arch=${arch/x86_64/x64}
+
+  local version=16.0.0
+  local url=https://nodejs.org/dist/v$version/node-v$version-linux-$arch.tar.xz
+  local path=/tmp/${url##*/}
+  wget -O "$path" "$url" || rm -f "$path"
+
+  tar -x -C "${path%/*}" -f "$path"
+
+  NPM_CONFIG_PREFIX=$prefix PATH=${path%.*.*}/bin:$PATH npm install -g node@lts npm
+}
+
+function install-npm-completions {
+  local path=~/.local/share/bash-completion/completions/npm
+  [[ ! -f $path ]] || return 0
+
+  mkdir -p "${path%/*}"
+  PATH=~/.npm/bin:$PATH npm completion > "$path"
 }
 
 function install-software {
   install-packages
-  install-node
   install-pip-packages
+  install-node
+  install-npm-completions
+}
+
+function update-dotfiles-url {
+  sed -i 's|\bhttps://\([^/]*\)/|git@\1:|' ~/.git/config
 }
 
 function clone-dotfiles {
   local path=~/.git
-  if [[ ! -d $path ]]; then
-    cd ~
-    git init
-    git remote add origin https://github.com/sgtpep/dotfiles.git
-    git fetch || rm -fr "$path"
-    git checkout -f master
-    git ls-files | grep -Po '.+(?=\.orig$)' | xargs -r -I {} -d '\n' cp ~/{}{.orig,}
-    cd - > /dev/null
-  fi
+  [[ ! -d $path ]] || return 0
+
+  local git=(git -C ~)
+  "${git[@]}" init
+  "${git[@]}" remote add origin https://github.com/sgtpep/dotfiles2.git
+  "${git[@]}" fetch || rm -fr "$path"
+  "${git[@]}" checkout -f master
+  "${git[@]}" ls-files | grep -Po '.+(?=\.orig$)' | xargs -r -I {} -d '\n' cp ~/{}{.orig,}
+
+  update-dotfiles-url
+}
+
+chromeos_path=/mnt/chromeos
+
+keys_path=$chromeos_path/removable/keys
+
+function copy-ssh-key {
+  local path=~/.ssh/id_rsa
+  [[ ! -f $path ]] || return 0
+
+  cp "$keys_path"/"${path##*/}" "$path"
+  chmod 600 "$path"
+
+  until ssh-keygen -p -N '' ${PASSPHRASE+-P "$PASSPHRASE"} -f "$path"; do
+    :
+  done
+
+  update-dotfiles-url
+}
+
+function preconnect-personal {
+  ssh -o StrictHostKeyChecking=accept-new personal :
+}
+
+function configure-pass {
+  local path=$1/.git/hooks/post-commit
+  cat > "$path" << \EOF
+#!/bin/bash
+set -eu
+
+git pull
+git push
+EOF
+  chmod +x "$path"
 }
 
 function clone-repositories {
@@ -102,14 +163,19 @@ function clone-repositories {
     [notes]=~/notes
     [pass]=~/.password-store
   )
+
   local name
   for name in "${!repositories[@]}"; do
     local path=${repositories[$name]}
-    if [[ ! -d $path ]] && ! git clone personal:repositories/"$name".git "$path"; then
-      rm -fr "$path"
-      return 1
-    fi
+    [[ ! -d $path ]] || continue
+
+    ! git clone personal:repositories/"$name".git "$path" || continue
+
+    rm -fr "$path"
+    return 1
   done
+
+  configure-pass "${repositories[pass]}"
 }
 
 function configure-sommelier {
@@ -117,7 +183,7 @@ function configure-sommelier {
   mkdir -p "${path%/*}"
   cat > "$path" << \EOF
 [Service]
-Environment="SOMMELIER_ACCELERATORS=<Alt>Tab,<Alt>equal,<Alt>space,<Control>space,Super_L"
+Environment="SOMMELIER_ACCELERATORS=<Alt>Tab,<Control>space,Super_L"
 EOF
 }
 
@@ -126,33 +192,26 @@ function copy-netrc {
   [[ -f $path ]] || scp personal:"${path#~/}" "$path"
 }
 
-keys_path=/mnt/chromeos/removable/keys
-
-function copy-ssh-key {
-  local path=~/.ssh/id_rsa
-  [[ -f $path ]] || cp "$keys_path"/"${path##*/}" "$path"
-  chmod 600 "$path"
-  sed -i 's|\bhttps://\([^/]*\)/|git@\1:|' ~/.git/config
-}
-
 function download-dictionaries {
+  local urls=(http://download.huzheng.org/lingvo/stardict-{ER,RE}-LingvoUniversal-2.4.2.tar.bz2)
+
   local url
-  for url in http://download.huzheng.org/lingvo/stardict-{ER,RE}-LingvoUniversal-2.4.2.tar.bz2; do
+  for url in "${urls[@]}"; do
     local filename=${url##*/}
     local path=~/.stardict/dic/${filename%.*.*}
-    if [[ ! -d $path ]]; then
-      mkdir -p "$path"
-      if ! wget -O - "$url" | tar -jx -C "${path%/*}"; then
-        rm -fr "$path"
-        return 1
-      fi
-    fi
+    [[ ! -d $path ]] || continue
+
+    mkdir -p "$path"
+    ! wget -O - "$url" | tar -jx -C "${path%/*}" || continue
+
+    rm -fr "$path"
+    return 1
   done
 }
 
 function enable-ssh-agent {
   local filename=ssh-agent.socket
-  local path=~/.config/systemd/user/ssh-agent.service
+  local path=~/.config/systemd/user/${filename%.*}.service
   mkdir -p "${path%/*}"
   cat > "$path" << EOF
 [Service]
@@ -163,9 +222,6 @@ Type=simple
 WantedBy=default.target
 EOF
   systemctl --user enable "$path"
-  local line="export SSH_AUTH_SOCK=\$XDG_RUNTIME_DIR/$filename"
-  local path=~/.profile_local
-  grep -Fqsx "$line" "$path" || echo "$line" >> "$path"
 }
 
 function enable-xrdb {
@@ -191,23 +247,20 @@ function fix-icon {
   local path=~/.local/share/applications/rxvt-unicode.desktop
   mkdir -p "${path%/*}"
   cp /usr/share/applications/"${path##*/}" "$path"
+
   sed -i -f - "$path" << \EOF
-s|\(^Icon=\).*|\1/usr/share/icons/Adwaita/512x512/apps/utilities-terminal.png|
-s/\(^Name=\).*/\1URxvt/
+s|\(^Icon=\).*|\1/usr/share/icons/Adwaita/512x512/legacy/utilities-terminal.png|
+s/\(^Name=\).*/\1Terminal/
 EOF
 }
 
-downloads_path=/mnt/chromeos/MyFiles/Downloads
-
-function copy-chromium-extension {
-  cp -Tru ~/.local/share/chromium/extensions/customizations "$downloads_path"/.customizations
-}
-
 function import-gpg-key {
-  if ! ls ~/.gnupg/private-keys-v1.d/*.key &> /dev/null; then
-    gpg --import "$keys_path"/private-key.asc
-    gpg --import-ownertrust <<< "$(gpg -k --with-colons | grep -Po -m 1 '(?<=^fpr:::::::::)[^:]+'):6:"
-  fi
+  ! ls ~/.gnupg/private-keys-v1.d/*.key &> /dev/null || return 0
+
+  gpg ${PASSPHRASE+--batch --passphrase "$PASSPHRASE"} --import "$keys_path"/private-key.asc
+
+  local ownertrust="$(gpg -k --with-colons | grep -Po -m 1 '(?<=^fpr:::::::::)[^:]+'):6:"
+  gpg --import-ownertrust <<< "$ownertrust"
 }
 
 function set-hostname {
@@ -220,15 +273,13 @@ function set-terminal-emulator {
 }
 
 function symlink-downloads {
-  ln -fs "$downloads_path" ~
+  ln -fs "$chromeos_path"/MyFiles/Downloads ~
 }
 
 function setup-system {
   clone-repositories
   configure-sommelier
-  copy-chromium-extension
   copy-netrc
-  copy-ssh-key
   download-dictionaries
   enable-ssh-agent
   enable-xrdb
@@ -242,6 +293,8 @@ function setup-system {
 function main {
   install-software
   clone-dotfiles
+  copy-ssh-key
+  preconnect-personal
   setup-system
 }
 
