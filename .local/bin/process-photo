@@ -29,21 +29,6 @@ function rename-dated {
   exiftool '-FileName<CreateDate' -d '%Y-%m-%d-%H-%M-%S%%+c.%%le' "$@" || :
 }
 
-function rename-nokia {
-  local path
-  for path; do
-    [[ -f $path && $path =~ /[^-]+_([[:digit:]]{4})([[:digit:]]{2})([[:digit:]]{2})_([[:digit:]]{2})([[:digit:]]{2})([[:digit:]]{2}).*\.[^.]+$ ]] || continue
-
-    local destination
-    for destination in "${path%/*}"/"${BASH_REMATCH[1]}"-"${BASH_REMATCH[2]}"-"${BASH_REMATCH[3]}"-"${BASH_REMATCH[4]}"-"${BASH_REMATCH[5]}"-"${BASH_REMATCH[6]}"{,_{1..1000}}."${path##*.}"; do
-      [[ ! -f $destination ]] || continue
-
-      mv "$path" "$destination"
-      break
-    done
-  done
-}
-
 function rename-whatsapp {
   local path
   for path; do
@@ -59,10 +44,6 @@ function rename-whatsapp {
   done
 }
 
-function rotate-photos {
-  exiftran -ai "$@"
-}
-
 function main {
   install-packages
 
@@ -76,9 +57,7 @@ function main {
     lowercase-extensions "$directory"/*.{JPEG,JPG}
     normalize-extensions "$directory"/*.jpeg
     rename-dated "$directory"/*.jpg
-    rename-nokia "$directory"/*.jpg
     rename-whatsapp "$directory"/*.jpg
-    rotate-photos "$directory"/*.jpg
   done
 }
 

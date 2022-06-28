@@ -1,5 +1,5 @@
 [Default Applications]
-application/pdf=x-www-browser.desktop
+application/pdf=chromium.desktop
 image/gif=sxiv.desktop
 image/jpeg=sxiv.desktop
 image/png=sxiv.desktop

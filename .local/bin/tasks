@@ -12,8 +12,9 @@ if [[ ! $@ ]]; then
   exit
 fi
 
-date=$(date -d "$1" +%F-%a)
-IFS=- read -r current_{year,month,day,weekday} <<< "$date"
+date=$1
+iso_date=$(date -d "$date" +%F-%a)
+IFS=- read -r current_{year,month,day,weekday} <<< "$iso_date"
 
 while IFS=\  read -r date task; do
   [[ $date != \#* ]] || continue

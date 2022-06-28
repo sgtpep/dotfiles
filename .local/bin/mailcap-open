@@ -1,17 +1,19 @@
 #!/bin/bash
 set -eu
 
-directory=${1%/*}
+path=$1
+
+directory=${path%/*}
 find "$directory" -type f -mtime +1 -delete
 
-filename=${1##*/}
+filename=${path##*/}
 if [[ $filename == *.* ]]; then
   command=xdg-open
-  path=$directory/.$filename
+  destination=$directory/.$filename
 else
   command=x-www-browser
-  path=$1.html
+  destination=$path.html
 fi
 
-mv "$1" "$path"
-setsid "$command" "$path" &> /dev/null &
+mv "$path" "$destination"
+setsid "$command" "$destination" &> /dev/null &

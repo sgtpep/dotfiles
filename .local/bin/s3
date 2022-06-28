@@ -1,7 +1,8 @@
 #!/bin/bash
 set -eu
 
-path=$XDG_RUNTIME_DIR/${0##*/}/$1
+bucket=$1
+path=$XDG_RUNTIME_DIR/${0##*/}/$bucket
 
 if mountpoint -q "$path"; then
   mounted=true
@@ -9,7 +10,7 @@ else
   eval "$(pass aws)"
 
   mkdir -p "$path"
-  rclone mount --daemon s3:"$1" "$path"
+  rclone mount --daemon s3:"$bucket" "$path"
   until mountpoint -q "$path"; do
     sleep 1
   done

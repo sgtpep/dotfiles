@@ -2,13 +2,14 @@
 set -eu
 
 function convert-video {
-  [[ $1 != *.mp4 ]] || ! ffprobe "$1" |& grep -q ' encoder ' || return 0
+  local input=$1
+  [[ $input != *.mp4 ]] || ! ffprobe "$input" |& grep -q ' encoder ' || return 0
 
-  local path=${1%.*}~.mp4
-  ffmpeg -y -i "$1" -vf 'scale=-2:min(ih\, 720)' "$path"
+  local output=${input%.*}~.mp4
+  ffmpeg -y -i "$input" -vf 'scale=-2:min(ih\, 720)' "$output"
 
-  rm -f "$1"
-  mv "$path" "${1%.*}".mp4
+  rm -f "$input"
+  mv "$output" "${input%.*}".mp4
 }
 
 function convert-videos {

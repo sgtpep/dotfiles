@@ -6,34 +6,32 @@ exec -a notes vim -c "
 nnoremap <silent> <Leader>T :edit tasks<CR>
 nnoremap <silent> <Leader>t :find todo<CR>
 
+function Commit(paths)
+  call system('git add -A')
+
+  let message = 'Update ' . join(a:paths, ', ')
+  call system('git commit -m ' . shellescape(message))
+endfunction
+
 function Sync()
-  let path = expand('~/notes')
-  let command = 'git -C ' . shellescape(path)
-  let paths = systemlist(command . ' diff --name-only')
-
-  function! Commit(command, paths)
-    call system(a:command . ' add -A')
-
-    let message = 'Update ' . join(a:paths, ', ')
-    call system(a:command . ' commit -m ' . shellescape(message))
-  endfunction
+  let paths = systemlist('git diff --name-only')
 
   if !empty(paths)
-    call Commit(command, paths)
+    call Commit(paths)
   endif
 
-  let output = system(command . ' pull -r')
+  let output = system('git pull -r')
   let status = v:shell_error
 
-  if filereadable(path . '/.git/REBASE_HEAD')
-    call Commit(command, paths)
-    call system(command . ' rebase --skip')
+  if filereadable('.git/REBASE_HEAD')
+    call Commit(paths)
+    call system('git rebase --skip')
   elseif status != 0
     echo output
   endif
 
   if !empty(paths)
-    call system(command . ' push')
+    call system('git push')
   endif
 endfunction
 

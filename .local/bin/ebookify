@@ -2,7 +2,8 @@
 set -eu
 
 function sanitize-filename {
-  local filename=${1//$'\0'/ }
+  local filename=$1
+  filename=${filename//$'\0'/ }
   filename=${filename//$'\n'/ }
   filename=${filename//\\/＼}
   filename=${filename//\//∕}
@@ -72,10 +73,11 @@ function parse-options {
 }
 
 function rewrite-url {
-  if [[ $1 == https://habr.com/* ]]; then
-    echo "${1/\/\////m.}"
+  local url=$1
+  if [[ $url == https://habr.com/* ]]; then
+    echo "${url/\/\////m.}"
   else
-    echo "$1"
+    echo "$url"
   fi
 }
 
@@ -85,26 +87,32 @@ function output-path {
 
   find "$directory" -type f -mtime +1 -delete
 
-  local checksum=$(md5sum <<< "$1")
+  local url=$1
+  local checksum=$(md5sum <<< "$url")
   echo "$directory"/"${checksum%% *}".pdf
 }
 
 function extract-pdf-title {
-  pdfinfo "$1" | grep '^Title:' | sed 's/^[^:]*:\s*\(.*\)\s*$/\1/'
+  local path=$1
+  pdfinfo "$path" | grep '^Title:' | sed 's/^[^:]*:\s*\(.*\)\s*$/\1/'
 }
 
 function extract-filename {
-  local url=${1%\?*}
+  local url=$1
   local filename=${url##*/}
-  echo "${title//%20/ }"
+  filename=${filename%\?*}
+  filename=${filename//%20/ }
+  echo "$filename"
 }
 
 function process-pdf {
-  wget -O "$2" "$1"
+  local url=$1
+  local path=$2
+  wget -O "$path" "$url"
 
-  local title=$(extract-pdf-title "$2")
+  local title=$(extract-pdf-title "$path")
   if [[ ! $title ]]; then
-    local filename=$(extract-filename "$1")
+    local filename=$(extract-filename "$url")
     title=${filename%.pdf}
   fi
   echo "$title"
@@ -117,9 +125,12 @@ function install-puppeteer {
 }
 
 function extract-host {
-  local url=${1#*://}
-  local host=${url%%/*}
+  local url=$1
+  local host=${url#*://}
+  host=${host%%/*}
+
   [[ $host != *.medium.com ]] || host=${host#*.}
+
   echo "$host"
 }
 
@@ -144,9 +155,10 @@ declare -A styles_disabled_hosts=()
 function process-html {
   install-puppeteer
 
-  echo -n "Processing $1..." >&2
+  local url=$1
+  echo -n "Processing $url..." >&2
 
-  local host=$(extract-host "$1")
+  local host=$(extract-host "$url")
   NODE_PATH="$NPM_CONFIG_PREFIX"/lib/node_modules \
   javascript_enabled=${javascript_enabled-${javascript_enabled_hosts[$host]-}} \
   print_media=${print_media-${print_media_hosts[$host]-}} \
@@ -154,7 +166,8 @@ function process-html {
   script=${script-${host_scripts[$host]-}} \
   style=${style-${host_styles[$host]-}} \
   styles_disabled=${styles_disabled-${styles_disabled_hosts[$host]-}} \
-  node - "$1" "$2" << \EOF
+  local path=$2
+  node - "$url" "$path" << \EOF
 const puppeteer = require("puppeteer-core");
 
 (async () => {
@@ -255,11 +268,13 @@ EOF
 
 function deactivate-links {
   local string='/S /URI'
-  sed -i "s|$string\b|$(printf "%${#string}s")|g" "$1"
+  local path=$1
+  sed -i "s|$string\b|$(printf "%${#string}s")|g" "$path"
 }
 
 function confirm-upload {
-  read -p "Upload '$1'? [Y/n] "
+  local path=$1
+  read -p "Upload '$path'? [Y/n] "
   [[ $REPLY =~ ^[Yy]*$ ]]
 }
 
@@ -273,30 +288,33 @@ function truncate-filename {
 }
 
 function upload-article {
-  local filename=$(truncate-filename "${2//\//∕}".pdf)
+  local title=$2
+  local filename=$(truncate-filename "${title//\//∕}".pdf)
   if list-articles | grep -Fqx "$filename"; then
     echo "'$filename' already exists." >&2
     return 1
   fi
 
-  copy-article "$1" personal:"$articles_path"/"$filename"
+  local path=$1
+  copy-article "$path" personal:"$articles_path"/"$filename"
 }
 
 function process-url {
-  set -- "$(rewrite-url "$1")"
+  local url=$1
+  set -- "$(rewrite-url "$url")"
 
-  local path=$(output-path "$1")
+  local path=$(output-path "$url")
 
-  if [[ ${1%\?*} == *.pdf ]]; then
-    local title=$(process-pdf "$1" "$path")
+  if [[ ${url%\?*} == *.pdf ]]; then
+    local title=$(process-pdf "$url" "$path")
   else
-    local title=$(process-html "$1" "$path")
+    local title=$(process-html "$url" "$path")
   fi
 
   [[ -f $path ]]
 
   deactivate-links "$path"
-  exiftool -q -overwrite_original -Author="$1" "$path"
+  exiftool -q -overwrite_original -Author="$url" "$path"
 
   setsid xdg-open "$path" &> /dev/null &
 

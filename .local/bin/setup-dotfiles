@@ -3,44 +3,36 @@ set -eu
 
 function install-packages {
   local packages=(
-    ImageMagick
-    calc
-    chromium
+    apcalc
+    aria2
+    bash{,-completion}
     curl
-    ffmpeg
     git
-    gnupg2
+    gnupg
+    graphicsmagick-imagemagick-compat
+    magic-wormhole
+    man-db
     mutt
+    ncal
     ncdu
-    nodejs
-    openssh
+    openssh-client
     pass
     python3-pip
-    rclone
+    rclone fuse
     ripgrep
     rsync
     sdcv
     sshuttle
     tmux
+    unzip
     vifm
-    vim-enhanced
+    vim-gtk
     w3m
     wget
-    wl-clipboard
-    youtube-dl
+    xsel
+    zip
   )
-  local installed_packages=$(dnf -C list --installed "${packages[@]}" 2> /dev/null | sed '1d; s/\..*$//')
-  [[ $installed_packages == $(printf '%s\n' "${packages[@]}") ]] || sudo dnf -y install "${packages[@]}"
-}
-
-function install-flatpak-apps {
-  declare -A apps=(
-    [org.gimp.GIMP]=fedora
-  )
-  local app
-  for app in "${!apps[@]}"; do
-    flatpak info "$app" &> /dev/null || flatpak install -y "${apps[$app]}" "$app"
-  done
+  dpkg -s "${packages[@]}" &> /dev/null || sudo apt -y install "${packages[@]}"
 }
 
 function install-pip-packages {
@@ -55,109 +47,108 @@ function install-pip-packages {
   done
 }
 
-function install-software {
+function install-dependencies {
   install-packages
-  install-flatpak-apps
   install-pip-packages
 }
 
-function clone-dotfiles {
-  local path=~/.git
-  [[ ! -d $path ]] || return 0
-
-  local git=(git -C "${path%/*}")
-  "${git[@]}" init
-  "${git[@]}" remote add origin https://github.com/sgtpep/dotfiles.git
-  "${git[@]}" fetch
-  "${git[@]}" checkout -f master
-  "${git[@]}" ls-files | grep -Po '.+(?=\.orig$)' | xargs -r -I {} -d '\n' cp ~/{}{.orig,}
-}
-
-keys_path=/run/media/$USER/keys
-
-function copy-ssh-key {
-  local path=~/.ssh/id_rsa
-  [[ ! -f $path ]] || return 0
-
-  cp "$keys_path"/"${path##*/}" "$path"
-  chmod 600 "$path"
-
-  until ssh-keygen -p -N '' -f "$path"; do
-    :
-  done
-
-  sed -i 's|\bhttps://\([^/]*\)/|git@\1:|' ~/.git/config
-}
-
-function configure-pass {
-  local path=$1/.git/hooks/post-commit
-  cat > "$path" << \EOF
-#!/bin/bash
-set -eu
-
-git pull
-git push
-EOF
-  chmod +x "$path"
-}
-
-function clone-repositories {
-  declare -A repositories=(
-    [notes]=~/notes
-    [pass]=~/.password-store
-  )
-
-  local name
-  for name in "${!repositories[@]}"; do
-    local path=${repositories[$name]}
-    [[ ! -d $path ]] || continue
-
-    git clone personal:repositories/"$name".git "$path"
-  done
-
-  configure-pass "${repositories[pass]}"
-}
-
-function copy-netrc {
-  local path=~/.netrc
-  [[ -f $path ]] || scp personal:"${path#~/}" "$path"
-}
-
-function download-dictionaries {
-  local urls=(http://download.huzheng.org/lingvo/stardict-{ER,RE}-LingvoUniversal-2.4.2.tar.bz2)
-
-  local url
-  for url in "${urls[@]}"; do
-    local filename=${url##*/}
-    local path=~/.stardict/dic/${filename%.*.*}
-    [[ ! -d $path ]] || continue
-
-    mkdir -p "$path"
-    wget -O - "$url" | tar -jx -C "${path%/*}"
-  done
-}
-
-function import-gpg-key {
-  ! ls ~/.gnupg/private-keys-v1.d/*.key &> /dev/null || return 0
-
-  gpg ${PASSPHRASE+--batch --passphrase "$PASSPHRASE"} --import "$keys_path"/private-key.asc
-
-  local ownertrust="$(gpg -k --with-colons | grep -Po -m 1 '(?<=^fpr:::::::::)[^:]+'):6:"
-  gpg --import-ownertrust <<< "$ownertrust"
-}
-
-function setup-system {
-  clone-repositories
-  copy-netrc
-  download-dictionaries
-  import-gpg-key
-}
+# function clone-dotfiles {
+#   local path=~/.git
+#   [[ ! -d $path ]] || return 0
+# 
+#   local git=(git -C "${path%/*}")
+#   "${git[@]}" init
+#   "${git[@]}" remote add origin https://github.com/sgtpep/dotfiles.git
+#   "${git[@]}" fetch
+#   "${git[@]}" checkout -f master
+#   "${git[@]}" ls-files | grep -Po '.+(?=\.orig$)' | xargs -r -I {} -d '\n' cp ~/{}{.orig,}
+# }
+# 
+# keys_path=/run/media/$USER/keys
+# 
+# function copy-ssh-key {
+#   local path=~/.ssh/id_rsa
+#   [[ ! -f $path ]] || return 0
+# 
+#   cp "$keys_path"/"${path##*/}" "$path"
+#   chmod 600 "$path"
+# 
+#   until ssh-keygen -p -N '' -f "$path"; do
+#     :
+#   done
+# 
+#   sed -i 's|\bhttps://\([^/]*\)/|git@\1:|' ~/.git/config
+# }
+# 
+# function configure-pass {
+#   local path=$1/.git/hooks/post-commit
+#   cat > "$path" << \EOF
+# #!/bin/bash
+# set -eu
+# 
+# git pull
+# git push
+# EOF
+#   chmod +x "$path"
+# }
+# 
+# function clone-repositories {
+#   declare -A repositories=(
+#     [notes]=~/notes
+#     [pass]=~/.password-store
+#   )
+# 
+#   local name
+#   for name in "${!repositories[@]}"; do
+#     local path=${repositories[$name]}
+#     [[ ! -d $path ]] || continue
+# 
+#     git clone personal:repositories/"$name".git "$path"
+#   done
+# 
+#   configure-pass "${repositories[pass]}"
+# }
+# 
+# function copy-netrc {
+#   local path=~/.netrc
+#   [[ -f $path ]] || scp personal:"${path#~/}" "$path"
+# }
+# 
+# function download-dictionaries {
+#   local urls=(http://download.huzheng.org/lingvo/stardict-{ER,RE}-LingvoUniversal-2.4.2.tar.bz2)
+# 
+#   local url
+#   for url in "${urls[@]}"; do
+#     local filename=${url##*/}
+#     local path=~/.stardict/dic/${filename%.*.*}
+#     [[ ! -d $path ]] || continue
+# 
+#     mkdir -p "$path"
+#     wget -O - "$url" | tar -jx -C "${path%/*}"
+#   done
+# }
+# 
+# function import-gpg-key {
+#   ! ls ~/.gnupg/private-keys-v1.d/*.key &> /dev/null || return 0
+# 
+#   gpg ${PASSPHRASE+--batch --passphrase "$PASSPHRASE"} --import "$keys_path"/private-key.asc
+# 
+#   local ownertrust="$(gpg -k --with-colons | grep -Po -m 1 '(?<=^fpr:::::::::)[^:]+'):6:"
+#   gpg --import-ownertrust <<< "$ownertrust"
+# }
+# 
+# function setup-system {
+#   clone-repositories
+#   copy-netrc
+#   download-dictionaries
+#   import-gpg-key
+# }
 
 function main {
-  install-software
+  install-dependencies
   clone-dotfiles
-  copy-ssh-key
-  setup-system
+  # copy-ssh-key
+  # setup-system
 }
 
 [[ -v BASH_SOURCE[0] && ${BASH_SOURCE[0]##*/} != ${0##*/} ]] || main "$@"

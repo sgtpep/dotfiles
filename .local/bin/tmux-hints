@@ -1,65 +1,69 @@
 #!/bin/bash
 set -eu
 
-function join-text {
-  local columns=$(tput cols)
-  if [[ ${1##*$'\n'} == *' -- ('*')' ]]; then
-    local width=80
-    (($columns < $width)) || columns=$width
-  fi
-
-  local line
-  while IFS= read -r line; do
-    echo -n "$line"
-    [[ ! ${line: -1} =~ [[:space:]] ]] && ((${#line} >= $columns)) || echo
-  done <<< "$1"
-}
-
 function read-text {
   local path=$XDG_RUNTIME_DIR/${0##*/}
   local text=$(< "$path")
   rm "$path"
-  join-text "$text"
+  echo "$text"
 }
 
-pattern='\bhttps?://[^][:space:]"<]*[-[:alnum:]/]'
+pattern=$'\\bh\n?t\n?t\n?p\n?s?\n?:\n?/\n?/\n?'
 
 function parse-urls {
   local text=$1
+  local length=${#text}
+  local index=0
   while [[ $text =~ $pattern ]]; do
-    echo "${BASH_REMATCH[0]}"
     text=${text#*"${BASH_REMATCH[0]}"}
+    local new_length=$((${#text} + ${#BASH_REMATCH[0]}))
+    index=$((index + (length - new_length)))
+    echo "$index"
+    length=$new_length
   done
 }
 
 characters=fdsagrewcx
 
 function generate-label {
+  local index=$1
+  local count=$2
   local digit
   while read -r -n 1 digit; do
-    local character=${characters:$digit:1}
+    local character=${characters:digit:1}
     echo -n "${character^}"
-  done < <(printf "%0${#2}d" "$1")
+  done < <(printf "%0${#count}d" "$index")
 }
 
 function hintify-text {
   local text=$1
+  shift
+
+  local count=$#
+  local start=$'\e[7m'
+  local end=$'\e[m'
   local index=0
-  while [[ $text =~ $pattern ]]; do
-    local label=$(generate-label "$index" "$2")
-    printf "%s\e[7m%s\e[m%s" "${text%%"${BASH_REMATCH[0]}"*}" "$label" "${BASH_REMATCH[0]:${#label}}"
+  local position
+  for position; do
+    local label=$(generate-label "$index" "$count")
+    local offset=$((position + index * (${#start} + ${#end})))
+    text=${text::offset}$start$label$end${text:offset + ${#label}}
     ((index += 1))
-    text=${text#*"${BASH_REMATCH[0]}"}
   done
+
   echo -n "$text"
 }
 
 function output-text {
-  printf '\e[?25l%s' "${1%$'\n'}"
+  local text=$1
+  printf '\e[?25l%s' "${text%$'\n'}"
   tmux select-window -t url
 }
 
-function process-input {
+function read-input {
+  local text=$1
+  shift
+
   local number=
   local index
   for ((index=0; index < ${##}; index++)); do
@@ -72,10 +76,58 @@ function process-input {
     [[ ${#tail} == 0 && ! $number ]] || number+=${#tail}
   done
 
-  local url=${@:$number + 1:1}
-  [[ $url ]] || return 0
+  local position=${@:number + 1:1}
+  echo "$position $character"
+}
 
-  if [[ $character != $lowercase_character ]]; then
+function join-text {
+  local columns=$(tput cols)
+  if [[ ${1##*$'\n'} == *' -- ('*')' ]]; then
+    local width=80
+    ((columns < width)) || columns=$width
+  fi
+
+  local text=$1
+  local line
+  while IFS= read -r line; do
+    echo -n "$line"
+    [[ ! ${line: -1} =~ [[:space:]] ]] && ((${#line} >= columns)) || echo
+  done <<< "$text"
+}
+
+function extract-url {
+  local text=$1
+  local position=$2
+
+  local start=
+  local line
+  while IFS= read -r line; do
+    [[ ! $start ]] || start+=$'\n'
+    start+=$(printf "%${#line}s")
+  done <<< "${text::position}"
+
+  local joined_text=$(join-text "$start${text:position}")
+
+  local start_pattern="^[[:space:]]*($pattern)"
+  [[ $joined_text =~ $start_pattern ]]
+  local url=${joined_text:${#BASH_REMATCH[0]} - ${#BASH_REMATCH[1]}}
+
+  local parentheses=
+  [[ $url == *wiki* ]] || parentheses='()'
+
+  # See https://www.regular-expressions.info/posixbrackets.html
+  local url_pattern='^[^[:space:]!"$'\'"$parentheses"'*+,;<>@\\^‘{|}~]+'
+  [[ $url =~ $url_pattern ]]
+  echo "${BASH_REMATCH[0]}"
+}
+
+function open-url {
+  local url=$1
+  [[ $url ]] || return 1
+
+  local character=$2
+  echo "$character" > /tmp/test
+  if [[ $character != ${character,} ]]; then
     echo "$url" >> ~/.urls
     return
   fi
@@ -87,14 +139,19 @@ function process-input {
 function main {
   local text=$(read-text)
 
-  local urls
-  mapfile -t urls < <(parse-urls "$text")
-  [[ ${urls[@]} ]] || return 0
+  local positions
+  mapfile -t positions < <(parse-urls "$text")
+  [[ ${positions[@]} ]] || return 0
 
-  local hintified_text=$(hintify-text "$text" "${#urls[@]}")
+  local hintified_text=$(hintify-text "$text" "${positions[@]}")
   output-text "$hintified_text"
 
-  process-input "${urls[@]}"
+  local position
+  local character
+  IFS=' ' read -r position character < <(read-input "$text" "${positions[@]}")
+
+  local url=$(extract-url "$text" "$position")
+  open-url "$url" "$character"
 }
 
 [[ -v BASH_SOURCE[0] && ${BASH_SOURCE[0]##*/} != ${0##*/} ]] || main "$@"

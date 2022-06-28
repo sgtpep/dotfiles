@@ -6,14 +6,15 @@ function run-actions {
 
   local rsync=(rsync -FOahvz --progress)
   local path=~/Downloads/personal
-  if [[ $1 == backup ]]; then
+
+  local action=$1
+  if [[ $action == backup ]]; then
     "${rsync[@]}" --delete personal: "$path"
-  elif [[ $1 == restore ]]; then
+  elif [[ $action == restore ]]; then
     "${rsync[@]}" -u "$path"/ personal:
   else
-    local status 1
+    return 1
   fi
-  return "${status-0}"
 }
 
 function setup-user {
@@ -22,6 +23,7 @@ function setup-user {
   local timezone=$(readlink /etc/localtime | sed 's|^/usr/share/zoneinfo/||')
   local user=danil
   local password=$(sudo grep -Po "(?<=^$user:)[^:]+" /etc/shadow)
+
   ssh root@personal bash -"$-" << EOF
   timedatectl set-timezone '$timezone'
   id '$user' &> /dev/null || useradd -m -G sudo -s /bin/bash '$user'
@@ -89,6 +91,7 @@ function configure-msmtp {
 
   local netrc_path=~/.netrc
   local host=$(grep -Po '(?<=\bmachine\s)\s*mail\.[^\s]+' "$netrc_path")
+
   sudo tee /etc/msmtprc > /dev/null << EOF
 account default
   aliases $aliases_path
@@ -125,11 +128,12 @@ EOF
 }
 
 function download-dotfile {
-  local path=~/$1
-  if [[ ! -f $path ]]; then
-    mkdir -p "${path%/*}"
-    wget -O "$path" https://raw.githubusercontent.com/sgtpep/dotfiles/master/"$1"
-  fi
+  local relative_path=$1
+  local path=~/$relative_path
+  [[ ! -f $path ]] || return 0
+
+  mkdir -p "${path%/*}"
+  wget -O "$path" https://raw.githubusercontent.com/sgtpep/dotfiles/master/"$1"
 
   [[ $path != ~/.local/bin/* ]] || chmod +x "$path"
 }

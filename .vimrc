@@ -20,25 +20,92 @@ function s:enable_views()
   autocmd BufWinLeave * silent! mkview
 endfunction
 
-function s:comment_code(is_visual, is_commenting) range
-  let range = a:is_visual ? "'<,'>" : ''
+function s:comment_line(line, mask, opening, closing, indent)
+  let line = a:line
+  if empty(trim(line, a:mask))
+    let line = a:indent
+  endif
+
+  let width = strlen(a:indent)
+  let line = (width ? line[:width - 1] : '') . a:opening . ' ' . line[width:]
+
+  if !empty(a:closing)
+    let line .= ' ' . a:closing
+  endif
+
+  return line
+endfunction
+
+function s:line_commented(line, mask, opening, closing)
+  if stridx(trim(a:line, a:mask, 1), trim(a:opening)) != 0
+    return v:false
+  endif
+
+  if empty(a:closing)
+    return v:true
+  endif
+
+  let trimmed = trim(a:line, a:mask, 2)
+  return strridx(trimmed, a:closing) == strlen(trimmed) - strlen(a:closing)
+endfunction
+
+function s:uncomment_line(line, mask, opening, closing)
+  if !s:line_commented(a:line, a:mask, a:opening, a:closing)
+    return a:line
+  endif
+
+  let line = a:line
+  let pattern = printf('[%s]*', a:mask)
+  let [start, end] = [matchstr(line, '^' . pattern), matchstr(line, pattern . '$')]
+
+  let string = start . a:opening
+  if stridx(line, string) == 0
+    let line = (empty(start) ? '' : line[:strlen(start) - 1]) . line[strlen(string):]
+  endif
+
+  if !empty(a:closing)
+    let string = a:closing . end
+    if strridx(line, string) == strlen(line) - strlen(string)
+      let line = line[:-(strlen(string) + 1)] . line[-strlen(end):]
+    endif
+  endif
+
+  if empty(trim(line, a:mask))
+    let line = ''
+  endif
+
+  return line
+endfunction
+
+function s:comment_code() range
+  let [opening, closing] = split(empty(&commentstring) ? '#%s' : &commentstring, '\s*%s\s*', 1)
+
   let lines = getline(a:firstline, a:lastline)
-  let column = min(map(copy(lines), {_, line -> len(matchstr(line, '^\s*'))})) + 1
+  let mask = " \t"
+  let comments = len(filter(copy(lines), {_, line -> s:line_commented(line, mask, opening, closing)}))
+  let commenting = comments < len(lines)
+  let nonempty_lines = filter(copy(lines), {_, line -> !empty(trim(line, mask))})
 
-  let [opening, closing] = split(empty(&commentstring) ? '#%s' : &commentstring, '%s', 1)
-  if !empty(opening) && opening !~ ' $'
-    let opening .= ' '
-  endif
-  if !empty(closing) && closing !~ '^ '
-    let closing = ' ' . closing
+  if commenting
+    if !empty(nonempty_lines)
+      let pattern = printf('^[%s]*', mask)
+      let width = min(map(copy(nonempty_lines), {_, line -> matchend(line, pattern)}))
+      let indent = repeat(nonempty_lines[0][0], width)
+
+      call map(lines, {_, line -> s:comment_line(line, mask, opening, closing, indent)})
+    endif
+  else
+    if len(filter(copy(nonempty_lines), {_, line -> stridx(line, opening . ' ') != -1 && (empty(closing) || strridx(line, ' ' . closing) != -1)})) == len(nonempty_lines)
+      let [opening, closing] = [opening . ' ', empty(closing) ? closing : ' ' . closing]
+    endif
+
+    call map(lines, {_, line -> s:uncomment_line(line, mask, opening, closing)})
   endif
 
-  if a:is_commenting
-    let expression = printf("%snormal %d|i%s\<C-O>$%s\<Esc>\^", range, column, opening, closing)
-  elseif empty(filter(lines, {_, line -> stridx(trim(line), opening) == -1 || stridx(line, closing, strlen(closing)) == -1}))
-    let expression = printf('%snormal ^%d"_x$%s%d|', range, strlen(opening), repeat('"_x', strlen(closing)), column)
-  endif
-  execute expression
+  let [start, end] = [a:firstline, a:lastline]
+  call map(lines, {index, line -> setline(start + index, line)})
+
+  normal ^
 endfunction
 
 function s:format_code()
@@ -66,7 +133,7 @@ function s:format_code()
     if lines !=# input
       let view = winsaveview()
       call setline(1, lines)
-      let expression = printf('%d,$delete _', len(lines) + 1)
+      let expression = (len(lines) + 1) . ',$delete _'
       silent! execute expression
       call winrestview(view)
 
@@ -102,8 +169,7 @@ function s:map_keys()
   nnoremap <Leader>f :find<Space>
   nnoremap <Leader>g :grep<Space>
   nnoremap <Leader>u :call append(line('.') - 1, trim(system('url ' . shellescape(input('URL: '))))) \| normal k<CR>
-  nnoremap <silent> <Leader>/ :call <SID>comment_code(v:false, v:true)<CR>
-  nnoremap <silent> <Leader>? :call <SID>comment_code(v:false, v:false)<CR>
+  nnoremap <silent> <Leader>/ :call <SID>comment_code()<CR>
   nnoremap <silent> <Leader>D :bdelete!<CR>
   nnoremap <silent> <Leader>F :call <SID>update_path()<CR>
   nnoremap <silent> <Leader>N :bnext<CR>
@@ -115,8 +181,7 @@ function s:map_keys()
   nnoremap <silent> <Leader>r :call <SID>format_code()<CR>
   nnoremap <silent> <Leader>y :call system('xsel -b', expand('%'))<CR>
   nnoremap Q <Nop>
-  vnoremap <silent> <Leader>/ :call <SID>comment_code(v:true, v:true)<CR>
-  vnoremap <silent> <Leader>? :call <SID>comment_code(v:true, v:false)<CR>
+  vnoremap <silent> <Leader>/ :call <SID>comment_code()<CR>
   vnoremap <silent> <Leader>s :sort<CR>
 endfunction
 
@@ -144,11 +209,7 @@ function s:set_directories()
 endfunction
 
 function s:set_options()
-  set clipboard=unnamedplus
-  set iskeyword+=-
   set nocompatible
-  set suffixesadd=.js,.jsx,.ts,.tsx
-  set undofile
 
   set autoindent
   set expandtab
@@ -169,6 +230,11 @@ function s:set_options()
 
   set wildignorecase
   set wildmode=list:longest,list:full
+
+  set clipboard=unnamedplus
+  set iskeyword+=-
+  set suffixesadd=.js,.jsx,.ts,.tsx
+  set undofile
 endfunction
 
 function s:main()

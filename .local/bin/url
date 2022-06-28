@@ -1,8 +1,9 @@
 #!/bin/bash
 set -eu
 
-url=$(sed 's/^\s\+\|\s\+$//g' <<< "$1")
-[[ $url =~ ^https?://[^[:space:]]+$ ]] 
+input=$1
+url=$(sed 's/^\s\+\|\s\+$//g' <<< "$input")
+[[ $url =~ ^https?://[^[:space:]]+$ ]]
 
 title=$(
   wget -q -O - -U 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0' --header='Accept-Encoding: gzip' --no-check-certificate "$url" | \
@@ -13,4 +14,4 @@ title=$(
   tr '\n' ' ' | \
   sed 's/\s\+/ /g; s/^ \| $//'
 )
-echo "${title:+$title }$url" 
+echo "${title:+$title }$url"

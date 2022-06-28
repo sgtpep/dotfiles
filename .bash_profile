@@ -9,10 +9,8 @@ export SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/ssh-agent.socket
 
 [[ ${PATH/~} != $PATH ]] || export PATH=~/.local/bin:$PATH:$NPM_CONFIG_PREFIX/bin:$PYTHONUSERBASE/bin
 
-path=~/.profile_local
-[[ ! -f $path ]] || . "$path"
-unset path
-
 . ~/.bashrc
 
-[[ -v TMUX ]] || exec tmux new-session -s 0
+path=~/.bash_profile_local
+[[ ! -f $path ]] || . "$path"
+unset path

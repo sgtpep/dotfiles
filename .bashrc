@@ -20,16 +20,11 @@ history -a
 '
 
 PS1=$'$(
-path=$PWD
-[[ ! -h $PWD ]] || path=$(readlink "$PWD")
-while [[ $path == ~ && ! -d $path/.git ]]; do
-  path=${path%/*}
-done
-[[ $path != ~ ]] || exit 0
+  [[ -d $PWD/.git && $PWD != ~ ]] || exit 0
 
-name=__git_ps1
-type -t "$name" > /dev/null || . /usr/lib/git-core/git-sh-prompt
-"$name" \'(%s) \'
+  name=__git_ps1
+  type -t "$name" > /dev/null || . /usr/lib/git-core/git-sh-prompt
+  "$name" \'(%s) \'
 )\W $ '
 
 shopt -s autocd

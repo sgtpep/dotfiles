@@ -2,9 +2,10 @@
 set -eu
 
 function write-file {
-  local path=$1~
-  cat > "$path"
-  mv "$path" "$1"
+  local path=$1
+  local temp=$path~
+  cat > "$temp"
+  mv "$temp" "$path"
 }
 
 path=~/.urls
@@ -25,9 +26,9 @@ while [[ -s $path ]]; do
     fi
   fi
 
-  log_path=$path-log
-  echo "$urls" >> "$log_path"
-  tail -n 100 "$log_path" | write-file "$log_path"
+  log=$path-log
+  echo "$urls" >> "$log"
+  tail -n 100 "$log" | write-file "$log"
 
   sed -i "1,${length}d" "$path"
 done

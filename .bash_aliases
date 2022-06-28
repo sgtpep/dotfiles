@@ -1,3 +1,4 @@
+alias cal='ncal -b'
 alias copy='xsel -b'
 alias cp='cp -i'
 alias dd='dd bs=4M oflag=sync status=progress'
@@ -8,16 +9,16 @@ alias ls='ls -h'
 alias mv='mv -i'
 alias rm='rm -I'
 alias serve='python3 -m http.server'
-alias sxiv='sxiv -r'
+alias unmount='udiskie-mount -ad'
 alias watch='watch '
 
 function pass {
-  [[ $# != 1 || $1 == -* ]] || set -- -c "$1"
+  [[ $# != 1 || $1 == -* ]] || set -- -c "$@"
   command pass "$@"
 }
 
 function rg {
-  command rg -p "$@" |& less
+  command rg -p --color=always "$@" |& less
   return "${PIPESTATUS[0]}"
 }
 

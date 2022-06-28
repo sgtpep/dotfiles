@@ -1,24 +1,31 @@
 #!/bin/bash
 set -eu
 
-path=${1%.*}~.${1##*.}
+input=$1
+output=${1%.*}~.${1##*.}
 
-if [[ $2 == concat ]]; then
+action=$2
+if [[ $action == concat ]]; then
   arguments=("${@:3}")
-  input=$XDG_RUNTIME_DIR/ffmpeg-input
-  printf 'file %q\n' "$1" "${arguments[@]}" > "$input"
+  path=$XDG_RUNTIME_DIR/ffmpeg-input
+  printf 'file %q\n' "$input" "${arguments[@]}" > "$path"
 
-  ffmpeg -f concat -safe 0 -i "$input" -c copy "$path"
-  rm "$input"
+  ffmpeg -f concat -safe 0 -i "$path" -c copy "$output"
+  rm "$path"
 
   for argument in "${arguments[@]}"; do
     mv "$argument" "${argument%/*}"/."${argument##*/}"
   done
-elif [[ $2 == cut ]]; then
-  ffmpeg -i "$1" -c copy -ss "$3" ${4+-to "$4"} "$path"
-elif [[ $2 == rotate ]]; then
-  ffmpeg -i "$1" -c copy -metadata:s:v rotate="$3" "$path"
+elif [[ $action == cut ]]; then
+  start=$3
+  end=$4
+  ffmpeg -i "$input" -c copy -ss "$start" ${end:+-to "$end"} "$output"
+elif [[ $action == rotate ]]; then
+  angle=$3
+  ffmpeg -i "$input" -c copy -metadata:s:v rotate="$angle" "$output"
 fi
 
-mv "$1" "${1%/*}"/."${1##*/}"
-mv "$path" "$1"
+backup=${input%/*}/.${input##*/}
+mv "$input" "$backup"
+
+mv "$output" "$input"

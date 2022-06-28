@@ -1,4 +1,5 @@
-set `bash -eu -c 'path=~/.cache/mutt; [[ -d "$path" ]] || mkdir -p "$path"; echo -n "tmpdir=$path "; while IFS= read -r line; do pattern="\bmachine\s+(mail\..+)\s+login\s+(.+)\s+password\s+(.+)"; if [[ $line =~ $pattern ]]; then hostname=${BASH_REMATCH[2]}:${BASH_REMATCH[3]}@${BASH_REMATCH[1]}; echo "from=${BASH_REMATCH[2]} folder=imaps://$hostname smtp_url=smtps://$hostname"; fi; done < ~/.netrc'`
+set `bash -eu -c 'path=~/.cache/mutt; [[ -d "$path" ]] || mkdir -p "$path"; echo -n "header_cache=$path tmpdir=$path "; while IFS= read -r line; do pattern="\bmachine\s+(mail\..+)\s+login\s+(.+)\s+password\s+(.+)"; if [[ $line =~ $pattern ]]; then hostname=${BASH_REMATCH[2]}:${BASH_REMATCH[3]}@${BASH_REMATCH[1]}; echo "from=${BASH_REMATCH[2]} folder=imaps://$hostname smtp_url=smtps://$hostname"; fi; done < ~/.netrc'`
+
 set imap_idle
 set postponed==Drafts
 set record==Sent
@@ -16,32 +17,31 @@ set noimap_passive
 set nomarkers
 set nowait_key
 
+set text_flowed
+set wrap=80
+
 set beep_new
 set fast_reply
 set forward_format=Fw:\ %s
 set from='Danil Semelenov <mail'@'danil.mobi>'
-set header_cache=~/.cache/mutt
 set include
 set mime_forward
 set pager_stop
-set query_command='echo; sed -n '\''s/\(.*'\''%s'\''.*\) <\(.*\)>/\2\t\1/ip; s/\(.*\) <\(.*'\''%s'\''.*\)>/\2\t\1/ip'\'' ~/notes/emails'
 set rfc2047_parameters
-set text_flowed
-set wrap=80
 
 alternative_order text/plain text/html
 auto_view text/html
 
 bind editor <Tab> complete-query
-bind index g reply
-bind index r group-reply
+set query_command='echo; sed -n '\''s/\(.*'\''%s'\''.*\) <\(.*\)>/\2\t\1/ip; s/\(.*\) <\(.*'\''%s'\''.*\)>/\2\t\1/ip'\'' ~/notes/emails'
 
 macro attach s '<save-entry><kill-line>~/Downloads/<Return>y<Return>'
 macro index <Space>a '<change-folder>=Archive<Return>'
 macro index <Space>e '<change-folder>=Inbox<Return>'
 macro index <Space>f '<change-folder>=Feeds<Return>'
-macro index <Space>s '<change-folder>=Spam<Return>'
+macro index <Space>s '<change-folder>=Sent<Return>'
 macro index <Space>t '<change-folder>=Trash<Return>'
+macro index <Space>x '<change-folder>=Spam<Return>'
 macro index,pager A '<save-message>=Archive<Return><Return>'
 macro index,pager b '<view-attachments><search>text/html<Return><view-mailcap><exit><delete-message>'
 macro pager d '<delete-message><exit>'
