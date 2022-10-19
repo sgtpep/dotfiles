@@ -2,15 +2,17 @@
 set -eu
 
 cd ~/notes
-exec -a notes vim -c "
+exec -a notes vim -c '''
 nnoremap <silent> <Leader>T :edit tasks<CR>
 nnoremap <silent> <Leader>t :find todo<CR>
 
 function Commit(paths)
   call system('git add -A')
 
-  let message = 'Update ' . join(a:paths, ', ')
-  call system('git commit -m ' . shellescape(message))
+  let paths = join(a:paths, ', ')
+  let message = printf('Update %s', paths)
+  let command = printf('git commit -m %s', shellescape(message))
+  call system(command)
 endfunction
 
 function Sync()
@@ -36,4 +38,4 @@ function Sync()
 endfunction
 
 autocmd BufWritePost * update | call Sync() | checktime
-" "$@"
+''' "$@"

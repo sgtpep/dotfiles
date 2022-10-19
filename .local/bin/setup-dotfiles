@@ -56,7 +56,8 @@ function install-dependencies {
 #   local path=~/.git
 #   [[ ! -d $path ]] || return 0
 # 
-#   local git=(git -C "${path%/*}")
+#   local directory=${path%/*}
+#   local git=(git -C "$directory")
 #   "${git[@]}" init
 #   "${git[@]}" remote add origin https://github.com/sgtpep/dotfiles.git
 #   "${git[@]}" fetch
@@ -70,7 +71,8 @@ function install-dependencies {
 #   local path=~/.ssh/id_rsa
 #   [[ ! -f $path ]] || return 0
 # 
-#   cp "$keys_path"/"${path##*/}" "$path"
+#   local filename=${path##*/}
+#   cp "$keys_path"/"$filename" "$path"
 #   chmod 600 "$path"
 # 
 #   until ssh-keygen -p -N '' -f "$path"; do
@@ -111,7 +113,8 @@ function install-dependencies {
 # 
 # function copy-netrc {
 #   local path=~/.netrc
-#   [[ -f $path ]] || scp personal:"${path#~/}" "$path"
+#   local relative_path=${path#~/}
+#   [[ -f $path ]] || scp personal:"$relative_path" "$path"
 # }
 # 
 # function download-dictionaries {
@@ -123,8 +126,9 @@ function install-dependencies {
 #     local path=~/.stardict/dic/${filename%.*.*}
 #     [[ ! -d $path ]] || continue
 # 
-#     mkdir -p "$path"
-#     wget -O - "$url" | tar -jx -C "${path%/*}"
+#     local directory=${path%/*}
+#     mkdir -p "$directory"
+#     wget -O - "$url" | tar -jx -C "$directory"
 #   done
 # }
 # 

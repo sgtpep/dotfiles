@@ -2,12 +2,11 @@
 set -eu
 
 function run-actions {
-  [[ $@ ]] || return 0
+  local action=$1
 
   local rsync=(rsync -FOahvz --progress)
   local path=~/Downloads/personal
 
-  local action=$1
   if [[ $action == backup ]]; then
     "${rsync[@]}" --delete personal: "$path"
   elif [[ $action == restore ]]; then
@@ -24,19 +23,24 @@ function setup-user {
   local user=danil
   local password=$(sudo grep -Po "(?<=^$user:)[^:]+" /etc/shadow)
 
-  ssh root@personal bash -"$-" << EOF
+  ssh root@personal "$SHELL" -"$-" << EOF
   timedatectl set-timezone '$timezone'
-  id '$user' &> /dev/null || useradd -m -G sudo -s /bin/bash '$user'
+
+  id '$user' &> /dev/null || useradd -m -G sudo -s "\$SHELL" '$user'
   chpasswd -e <<< '$user:$password'
 
   path=~/.ssh
-  cp -r "\$path" ~$user
-  chown -R '$user': ~$user"\${path#~}"
+  home=~$user
+  cp -r "\$path" "\$home"
+
+  target=\$home\${path#~}
+  chown -R '$user': "\$target"
 EOF
 }
 
 function run-script {
-  ssh -t personal "set -$-; $(< "${BASH_SOURCE[0]}")"
+  local script=$(< "${BASH_SOURCE[0]}")
+  ssh -t personal "set -$-; $script"
 }
 
 function configure-apt-sources {
@@ -86,15 +90,15 @@ function add-notes-key {
 email=mail'@'danil.mobi
 
 function configure-msmtp {
-  local aliases_path=/etc/aliases
-  sudo tee "$aliases_path" > /dev/null <<< "default: $email"
+  local aliases=/etc/aliases
+  sudo tee "$aliases" > /dev/null <<< "default: $email"
 
-  local netrc_path=~/.netrc
-  local host=$(grep -Po '(?<=\bmachine\s)\s*mail\.[^\s]+' "$netrc_path")
+  local netrc=~/.netrc
+  local host=$(grep -Po '(?<=\bmachine\s)\s*mail\.[^\s]+' "$netrc")
 
   sudo tee /etc/msmtprc > /dev/null << EOF
 account default
-  aliases $aliases_path
+  aliases $aliases
   auth on
   from $email
   host $host
@@ -103,16 +107,22 @@ account default
   tls_trust_file /etc/ssl/certs/ca-certificates.crt
   user $email
 EOF
-  sudo ln -fs "$netrc_path" /etc/"${netrc_path#~/.}"
+
+  local filename=${netrc#~/.}
+  sudo ln -fs "$netrc" /etc/"$filename"
 }
 
 function configure-ufw {
   local output=$(sudo ufw status)
+
   local port
-  for port in 22 443 80; do
+  for port in 22 80 443; do
     grep -q "^$port " <<< "$output" || sudo ufw allow "$port"
   done
-  grep -q ' active$' <<< "$output" || yes | sudo ufw enable
+
+  if ! grep -q ' active$' <<< "$output"; then
+    yes | sudo ufw enable
+  fi
 }
 
 function configure-unattended-upgrades {
@@ -129,11 +139,14 @@ EOF
 
 function download-dotfile {
   local relative_path=$1
+
   local path=~/$relative_path
   [[ ! -f $path ]] || return 0
 
-  mkdir -p "${path%/*}"
-  wget -O "$path" https://raw.githubusercontent.com/sgtpep/dotfiles/master/"$1"
+  local directory=${path%/*}
+  mkdir -p "$directory"
+
+  wget -O "$path" https://raw.githubusercontent.com/sgtpep/dotfiles/master/"$relative_path"
 
   [[ $path != ~/.local/bin/* ]] || chmod +x "$path"
 }
@@ -155,12 +168,15 @@ www_path=/var/www/html
 
 function setup-certbot {
   local path=/etc/letsencrypt/cli.ini
-  [[ ! $(tail -c 1 "$path") ]] || sudo tee -a "$path" > /dev/null <<< ''
+
+  local character=$(tail -c 1 "$path")
+  [[ ! $character ]] || sudo tee -a "$path" > /dev/null <<< ''
 
   local name=post-hook
   grep -q "^$name " "$path" || sudo tee -a "$path" > /dev/null <<< "$name = systemctl reload nginx"
 
-  [[ -d ${path%/*}/live ]] || sudo certbot certonly -d "$hostname" -m "$email" -w "$www_path" --agree-tos --no-eff-email --webroot
+  local directory=${path%/*}
+  [[ -d $directory/live ]] || sudo certbot certonly -d "$hostname" -m "$email" -w "$www_path" --agree-tos --no-eff-email --webroot
 }
 
 function setup-nginx {
@@ -244,7 +260,11 @@ function confirm-reboot {
 
 function main {
   if [[ ! -v SSH_CONNECTION ]]; then
-    run-actions "$@"
+    if [[ $@ ]]; then
+      run-actions "$@"
+      exit
+    fi
+
     setup-user
     run-script
     exit

@@ -2,6 +2,7 @@
 set -eu
 
 input=$1
+
 url=$(sed 's/^\s\+\|\s\+$//g' <<< "$input")
 [[ $url =~ ^https?://[^[:space:]]+$ ]]
 

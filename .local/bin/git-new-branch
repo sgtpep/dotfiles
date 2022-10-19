@@ -1,18 +1,21 @@
 #!/bin/bash
 set -eu
 
+name=$1
+base=${2-}
+
 if [[ $(git status -s) ]]; then
   git stash
   stashed=1
 fi
 
-base=${2-}
-[[ $base ]] || base=$(git remote show origin | grep ' HEAD branch:' | cut -d ' ' -f 5)
+if [[ ! $base ]]; then
+  base=$(git remote show origin | grep ' HEAD branch:' | cut -d ' ' -f 5)
+fi
 git checkout "$base"
 
 git pull --stat
 
-name=$1
 git checkout -b "$name"
 
 ref=$(git rev-parse --abbrev-ref HEAD)

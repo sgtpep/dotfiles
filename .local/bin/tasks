@@ -3,7 +3,7 @@ set -eu
 
 if [[ ! $@ ]]; then
   for day in {1..7}; do
-    output=$(bash -"$-" "$0" "$day day")
+    output=$("$SHELL" -"$-" "$0" "$day day")
     [[ ! $output ]] || continue
 
     weekday=$(date -d "$day day" +%A)
@@ -13,6 +13,7 @@ if [[ ! $@ ]]; then
 fi
 
 date=$1
+
 iso_date=$(date -d "$date" +%F-%a)
 IFS=- read -r current_{year,month,day,weekday} <<< "$iso_date"
 

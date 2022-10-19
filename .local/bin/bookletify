@@ -24,23 +24,32 @@ function pdfjoin {
 function generate-range {
   local input=$1
   local range=$2
+  local cover=$3
+
   local output=${input%.pdf}.$range.pdf
 
   if [[ $range == {} ]]; then
     pdfjoin -o "$output" "$input" {},1
-    pdfjoin -o "$output"{~,} 1
-    mv "$output"{~,}
+
+    local temp=$output~
+    pdfjoin -o "$temp" "$output" 1
+    mv "$temp" "$output"
   elif [[ $range == ^ || $range == ^- ]]; then
-    local cover=$3
-    local path=${input%.pdf}.$3.pdf
+    local path=${input%.pdf}.$cover.pdf
+
     [[ $range != ^ ]] || pdfjoin -o "$output" "$path" 1
-    pdfjoin -o "$path"{~,} 2-
-    mv "$path"{~,}
+
+    local temp=$path~
+    pdfjoin -o "$temp" "$path" 2-
+    mv "$temp" "$path"
   else
-    pdfjoin -o "$output" "$input" "${range%x2}"
+    local name=${range%x2}
+    pdfjoin -o "$output" "$input" "$name"
+
     if [[ $range == *x2 ]]; then
-      mutool poster -x 2 "$output"{,~} || pdfposter -p 2x1a4 "$output"{,~}
-      mv "$output"{~,}
+      local temp=$output~
+      mutool poster -x 2 "$output" "$temp" || pdfposter -p 2x1a4 "$output" "$temp"
+      mv "$temp" "$output"
     fi
   fi
 
@@ -61,51 +70,57 @@ function generate-ranges {
 function page-size {
   local path=${@: -1}
   [[ $path != *.^.pdf ]] || path=${@: -2:1}
+
   pdfinfo "$path" | grep -Po -m 1 '[\d.]+ x [\d.]+' | sed 's/ x / /'
 }
 
 function normalize-size {
-  local paths=($@)
+  local paths=("$@")
+
   local width height
   read width height < <(page-size "${paths[@]}")
 
   local path
   for path; do
-    pdfjam -o "$path"~ --papersize "{${width}pt,${height}pt}" "$path"
-    mv "$path"{~,}
+    local output=$path~
+    local size="{${width}pt,${height}pt}"
+    pdfjam -o "$output" --papersize "$size" "$path"
+    mv "$output" "$path"
   done
 }
 
 function concatenate-ranges {
   local output=$1
   shift
-
   local paths=("$@")
+
   pdfjoin -o "$output" "${paths[@]}"
   rm -f "${paths[@]}"
 }
 
 function generate-booklet {
   local input=$1
+  local output=$2
+
   pdfbook2 -b 0 -i 0 -o 0 -t 0 "$input"
 
   local source=${input%.pdf}-book.pdf
-  local output=$2
   mv "$source" "$output"
 }
 
 function main {
-  install-packages
-
   local path=$1
   shift
 
+  install-packages
+
   local input=$path
+
   if [[ $# > 1 ]]; then
     local cover=$1
     shift
+    local ranges=("$@")
 
-    local ranges=($@)
     local paths
     mapfile -t paths < <(generate-ranges "$input" "$cover" "${ranges[@]}")
     [[ ${paths[@]} ]]

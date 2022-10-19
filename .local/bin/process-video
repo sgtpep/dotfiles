@@ -3,13 +3,16 @@ set -eu
 
 function convert-video {
   local input=$1
-  [[ $input != *.mp4 ]] || ! ffprobe "$input" |& grep -q ' encoder ' || return 0
+
+  [[ $input != *.mp4 ]] || return 0
+  ! ffprobe "$input" |& grep -q ' encoder ' || return 0
 
   local output=${input%.*}~.mp4
   ffmpeg -y -i "$input" -vf 'scale=-2:min(ih\, 720)' "$output"
-
   rm -f "$input"
-  mv "$output" "${input%.*}".mp4
+
+  local target=${input%.*}.mp4
+  mv "$output" "$target"
 }
 
 function convert-videos {
@@ -20,15 +23,15 @@ function convert-videos {
 }
 
 function main {
-  . process-photo
-
   [[ $@ ]] || set -- .
+
+  . process-photo
 
   local path
   for path; do
     [[ -d $path ]]
-    local directory=${path%/}
 
+    local directory=${path%/}
     lowercase-extensions "$directory"/*.{3GP,AVI,MOV,MP4}
     rename-dated "$directory"/*.{3gp,avi,mov,mp4}
     rename-whatsapp "$directory"/*.mp4

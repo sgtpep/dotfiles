@@ -20,14 +20,28 @@ function s:enable_views()
   autocmd BufWinLeave * silent! mkview
 endfunction
 
+function s:append_url()
+  let url = input('URL: ')
+  let command = printf('url %s', shellescape(url))
+  let output = system(command)
+  let trimmed_output = trim(output)
+
+  let line = line('.') - 1
+  call append(line, trimmed_output)
+
+  normal k
+endfunction
+
 function s:comment_line(line, mask, opening, closing, indent)
   let line = a:line
-  if empty(trim(line, a:mask))
+  let trimmed_line = trim(line, a:mask)
+  if empty(trimmed_line)
     let line = a:indent
   endif
 
   let width = strlen(a:indent)
-  let line = (width ? line[:width - 1] : '') . a:opening . ' ' . line[width:]
+  let indent = width ? line[:width - 1] : ''
+  let line = printf('%s%s %s', indent, a:opening, line[width:])
 
   if !empty(a:closing)
     let line .= ' ' . a:closing
@@ -37,7 +51,9 @@ function s:comment_line(line, mask, opening, closing, indent)
 endfunction
 
 function s:line_commented(line, mask, opening, closing)
-  if stridx(trim(a:line, a:mask, 1), trim(a:opening)) != 0
+  let trimmed_line = trim(a:line, a:mask, 1)
+  let trimmed_opening = trim(a:opening)
+  if stridx(trimmed_line, trimmed_opening) != 0
     return v:false
   endif
 
@@ -45,8 +61,9 @@ function s:line_commented(line, mask, opening, closing)
     return v:true
   endif
 
-  let trimmed = trim(a:line, a:mask, 2)
-  return strridx(trimmed, a:closing) == strlen(trimmed) - strlen(a:closing)
+  let trimmed_line = trim(a:line, a:mask, 2)
+  let commented = strridx(trimmed_line, a:closing) == strlen(trimmed_line) - strlen(a:closing)
+  return commented
 endfunction
 
 function s:uncomment_line(line, mask, opening, closing)
@@ -56,21 +73,32 @@ function s:uncomment_line(line, mask, opening, closing)
 
   let line = a:line
   let pattern = printf('[%s]*', a:mask)
-  let [start, end] = [matchstr(line, '^' . pattern), matchstr(line, pattern . '$')]
+  let [start_pattern, end_pattern] = ['^' . pattern, pattern . '$']
+  let start = matchstr(line, start_pattern)
+  let end = matchstr(line, end_pattern)
 
   let string = start . a:opening
-  if stridx(line, string) == 0
-    let line = (empty(start) ? '' : line[:strlen(start) - 1]) . line[strlen(string):]
+  let index = stridx(line, string)
+  if index == 0
+    let start_length = strlen(start)
+    let string_length = strlen(string)
+    let prefix = empty(start) ? '' : line[:start_length - 1]
+    let line = prefix . line[string_length:]
   endif
 
   if !empty(a:closing)
     let string = a:closing . end
-    if strridx(line, string) == strlen(line) - strlen(string)
-      let line = line[:-(strlen(string) + 1)] . line[-strlen(end):]
+    let index = strridx(line, string)
+    let line_length = strlen(line)
+    let string_length = strlen(string)
+    if index == line_length - string_length
+      let end_length = strlen(end)
+      let line = line[:-(string_length + 1)] . line[-end_length:]
     endif
   endif
 
-  if empty(trim(line, a:mask))
+  let trimmed_line = trim(line, a:mask)
+  if empty(trimmed_line)
     let line = ''
   endif
 
@@ -78,25 +106,39 @@ function s:uncomment_line(line, mask, opening, closing)
 endfunction
 
 function s:comment_code() range
-  let [opening, closing] = split(empty(&commentstring) ? '#%s' : &commentstring, '\s*%s\s*', 1)
+  let comment_string = empty(&commentstring) ? '#%s' : &commentstring
+  let [opening, closing] = split(comment_string, '\s*%s\s*', 1)
 
   let lines = getline(a:firstline, a:lastline)
   let mask = " \t"
-  let comments = len(filter(copy(lines), {_, line -> s:line_commented(line, mask, opening, closing)}))
-  let commenting = comments < len(lines)
+  let comments = filter(copy(lines), {_, line -> s:line_commented(line, mask, opening, closing)})
+  let comment_length = len(comments)
+  let line_length = len(lines)
+  let commenting = comment_length < line_length
   let nonempty_lines = filter(copy(lines), {_, line -> !empty(trim(line, mask))})
 
   if commenting
     if !empty(nonempty_lines)
       let pattern = printf('^[%s]*', mask)
-      let width = min(map(copy(nonempty_lines), {_, line -> matchend(line, pattern)}))
+      let indexes = map(copy(nonempty_lines), {_, line -> matchend(line, pattern)})
+      let width = min(indexes)
       let indent = repeat(nonempty_lines[0][0], width)
 
       call map(lines, {_, line -> s:comment_line(line, mask, opening, closing, indent)})
     endif
   else
-    if len(filter(copy(nonempty_lines), {_, line -> stridx(line, opening . ' ') != -1 && (empty(closing) || strridx(line, ' ' . closing) != -1)})) == len(nonempty_lines)
-      let [opening, closing] = [opening . ' ', empty(closing) ? closing : ' ' . closing]
+    let full_opening = opening . ' '
+    if empty(closing)
+      let full_closing = ''
+    else
+      let full_closing = ' ' . closing
+    endif
+
+    let commented_lines = filter(copy(nonempty_lines), {_, line -> stridx(line, full_opening) != -1 && strridx(line, full_closing) != -1})
+    let commented_line_length = len(commented_lines)
+    let nonempty_line_length = len(nonempty_lines)
+    if commented_line_length == nonempty_line_length
+      let [opening, closing] = [full_opening, full_closing]
     endif
 
     call map(lines, {_, line -> s:uncomment_line(line, mask, opening, closing)})
@@ -112,11 +154,13 @@ function s:format_code()
   update
 
   let path = 'node_modules/.bin/prettier'
-  let command = executable(path) ? path : 'npx prettier'
-  let offset = abs(line2byte(line('.'))) + col('.') - 2
+  let executable = executable(path) ? path : 'npx prettier'
+  let [line, column] = [line('.'), col('.')]
+  let offset = abs(line2byte(line)) + column - 2
   let path = expand('%')
+  let command = printf('NODE_NO_WARNINGS=1 %s --cursor-offset=%d --stdin-filepath=%s', executable, offset, shellescape(path))
   let input = getline(1, '$')
-  let output = systemlist(printf('NODE_NO_WARNINGS=1 %s --cursor-offset=%d --stdin-filepath=%s', command, offset, shellescape(path)), input)
+  let output = systemlist(command, input)
   let lines = filter(output, {index, line -> index > 0 || line !~# '^npx: installed'})
 
   if v:shell_error
@@ -132,13 +176,19 @@ function s:format_code()
     let [offset, lines] = [lines[-1], lines[:-2]]
     if lines !=# input
       let view = winsaveview()
+
       call setline(1, lines)
-      let expression = (len(lines) + 1) . ',$delete _'
+
+      let count = len(lines) + 1
+      let expression = printf('%d,$delete _', count)
       silent! execute expression
+
       call winrestview(view)
 
       if offset != -1
-        execute 'goto' offset + 1
+        let count = offset + 1
+        let expression = printf('goto %d', count)
+        execute expression
       endif
     endif
   endif
@@ -148,8 +198,11 @@ endfunction
 
 function s:update_path()
   let output = systemlist('git ls-files')
-  let paths = uniq(sort(map(output, {_, path -> path =~ '/' ? substitute(path, '/[^/]*$', '', '') : ''})))
-  let &path = join([''] + paths, ',')
+  let paths = map(output, {_, path -> path =~ '/' ? fnamemodify(path, ':h') : ''})
+  call sort(paths)
+  call uniq(paths)
+  call extend(paths, [''], 0)
+  let &path = join(paths, ',')
 endfunction
 
 function s:map_keys()
@@ -168,7 +221,7 @@ function s:map_keys()
   nnoremap <Leader>e :edit<Space>
   nnoremap <Leader>f :find<Space>
   nnoremap <Leader>g :grep<Space>
-  nnoremap <Leader>u :call append(line('.') - 1, trim(system('url ' . shellescape(input('URL: '))))) \| normal k<CR>
+  nnoremap <Leader>u :call <SID>append_url()<CR>
   nnoremap <silent> <Leader>/ :call <SID>comment_code()<CR>
   nnoremap <silent> <Leader>D :bdelete!<CR>
   nnoremap <silent> <Leader>F :call <SID>update_path()<CR>
@@ -193,18 +246,23 @@ function s:patch_matchparen()
     return
   endif
 
-  let content = readfile(printf('%s/plugin/%s', $VIMRUNTIME, fnamemodify(path, ':t')))
-  let updated_content = map(content, {_, line -> substitute(line, ' || (&t_Co .*\|\[c_lnum,[^]]*], ', '', '')})
-  call mkdir(fnamemodify(path, ':h'), 'p')
-  call writefile(updated_content, path)
+  let filename = fnamemodify(path, ':t')
+  let source = printf('%s/plugin/%s', $VIMRUNTIME, filename)
+  let content = readfile(source)
+  let substituted_content = map(content, {_, line -> substitute(line, ' || (&t_Co .*\|\[c_lnum,[^]]*], ', '', '')})
+
+  let directory = fnamemodify(path, ':h')
+  call mkdir(directory, 'p')
+  call writefile(substituted_content, path)
 endfunction
 
 function s:set_directories()
   let path = fnamemodify(&viewdir, ':h')
-  let &directory = path . '/swap'
-  let &undodir = path . '/undo'
 
+  let &directory = path . '/swap'
   call mkdir(&directory, 'p')
+
+  let &undodir = path . '/undo'
   call mkdir(&undodir, 'p')
 endfunction
 

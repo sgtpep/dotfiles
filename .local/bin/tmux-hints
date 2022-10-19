@@ -5,6 +5,7 @@ function read-text {
   local path=$XDG_RUNTIME_DIR/${0##*/}
   local text=$(< "$path")
   rm "$path"
+
   echo "$text"
 }
 
@@ -12,14 +13,17 @@ pattern=$'\\bh\n?t\n?t\n?p\n?s?\n?:\n?/\n?/\n?'
 
 function parse-urls {
   local text=$1
+
   local length=${#text}
   local index=0
   while [[ $text =~ $pattern ]]; do
     text=${text#*"${BASH_REMATCH[0]}"}
+
     local new_length=$((${#text} + ${#BASH_REMATCH[0]}))
     index=$((index + (length - new_length)))
-    echo "$index"
     length=$new_length
+
+    echo "$index"
   done
 }
 
@@ -28,10 +32,12 @@ characters=fdsagrewcx
 function generate-label {
   local index=$1
   local count=$2
+
   local digit
   while read -r -n 1 digit; do
     local character=${characters:digit:1}
-    echo -n "${character^}"
+    local uppercase_character=${character^}
+    echo -n "$uppercase_character"
   done < <(printf "%0${#count}d" "$index")
 }
 
@@ -39,15 +45,16 @@ function hintify-text {
   local text=$1
   shift
 
-  local count=$#
+  local position
   local start=$'\e[7m'
   local end=$'\e[m'
   local index=0
-  local position
+  local count=$#
   for position; do
-    local label=$(generate-label "$index" "$count")
     local offset=$((position + index * (${#start} + ${#end})))
+    local label=$(generate-label "$index" "$count")
     text=${text::offset}$start$label$end${text:offset + ${#label}}
+
     ((index += 1))
   done
 
@@ -56,7 +63,10 @@ function hintify-text {
 
 function output-text {
   local text=$1
-  printf '\e[?25l%s' "${text%$'\n'}"
+
+  local trimmed_text=${text%$'\n'}
+  printf '\e[?25l%s' "$trimmed_text"
+
   tmux select-window -t url
 }
 
@@ -81,13 +91,14 @@ function read-input {
 }
 
 function join-text {
+  local text=$1
+
   local columns=$(tput cols)
-  if [[ ${1##*$'\n'} == *' -- ('*')' ]]; then
+  if [[ ${text##*$'\n'} == *' -- ('*')' ]]; then
     local width=80
     ((columns < width)) || columns=$width
   fi
 
-  local text=$1
   local line
   while IFS= read -r line; do
     echo -n "$line"
@@ -106,7 +117,8 @@ function extract-url {
     start+=$(printf "%${#line}s")
   done <<< "${text::position}"
 
-  local joined_text=$(join-text "$start${text:position}")
+  local new_text=$start${text:position}
+  local joined_text=$(join-text "$new_text")
 
   local start_pattern="^[[:space:]]*($pattern)"
   [[ $joined_text =~ $start_pattern ]]
@@ -123,17 +135,17 @@ function extract-url {
 
 function open-url {
   local url=$1
+  local character=$2
+
   [[ $url ]] || return 1
 
-  local character=$2
-  echo "$character" > /tmp/test
-  if [[ $character != ${character,} ]]; then
+  local lowercase_character=${character,}
+  if [[ $character != $lowercase_character ]]; then
     echo "$url" >> ~/.urls
     return
   fi
 
-  setsid x-www-browser "$url" &> /dev/null &
-  sleep 0.1
+  xdg-open "$url" &> /dev/null &
 }
 
 function main {

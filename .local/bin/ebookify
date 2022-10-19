@@ -3,6 +3,7 @@ set -eu
 
 function sanitize-filename {
   local filename=$1
+
   filename=${filename//$'\0'/ }
   filename=${filename//$'\n'/ }
   filename=${filename//\\/＼}
@@ -33,11 +34,14 @@ function list-articles {
 }
 
 function download-articles {
-  local path=/media/$USER/Kindle
+  local path=/run/media/$USER/Kindle
+
   local filename
   while IFS= read -r filename; do
+    local basename=${filename%.*}
+    local sanitized_filename=$(sanitize-filename "$basename")
+
     local article_path=$articles_path/$filename
-    local sanitized_filename=$(sanitize-filename "${filename%.*}")
     copy-article personal:"$article_path" "$path"/documents/"$articles_path"/"$sanitized_filename".pdf
     ssh personal xargs -d '\\n' rm <<< "$article_path"
   done < <(list-articles)
@@ -53,6 +57,7 @@ function install-packages {
 }
 
 function parse-options {
+  local option
   while getopts c:dej:ps: option; do
     if [[ $option == c ]]; then
       style=$OPTARG
@@ -74,31 +79,37 @@ function parse-options {
 
 function rewrite-url {
   local url=$1
+
   if [[ $url == https://habr.com/* ]]; then
-    echo "${url/\/\////m.}"
+    local mobile_url=${url/\/\////m.}
+    echo "$mobile_url"
   else
     echo "$url"
   fi
 }
 
 function output-path {
+  local url=$1
+
   local directory=~/.cache/${0##*/}
   mkdir -p "$directory"
 
   find "$directory" -type f -mtime +1 -delete
 
-  local url=$1
   local checksum=$(md5sum <<< "$url")
-  echo "$directory"/"${checksum%% *}".pdf
+  local basename=${checksum%% *}
+  echo "$directory"/"$basename".pdf
 }
 
 function extract-pdf-title {
   local path=$1
+
   pdfinfo "$path" | grep '^Title:' | sed 's/^[^:]*:\s*\(.*\)\s*$/\1/'
 }
 
 function extract-filename {
   local url=$1
+
   local filename=${url##*/}
   filename=${filename%\?*}
   filename=${filename//%20/ }
@@ -108,6 +119,7 @@ function extract-filename {
 function process-pdf {
   local url=$1
   local path=$2
+
   wget -O "$path" "$url"
 
   local title=$(extract-pdf-title "$path")
@@ -126,6 +138,7 @@ function install-puppeteer {
 
 function extract-host {
   local url=$1
+
   local host=${url#*://}
   host=${host%%/*}
 
@@ -153,10 +166,12 @@ declare -A host_styles=(
 declare -A styles_disabled_hosts=()
 
 function process-html {
-  install-puppeteer
-
   local url=$1
+  local path=$2
+
   echo -n "Processing $url..." >&2
+
+  install-puppeteer
 
   local host=$(extract-host "$url")
   NODE_PATH="$NPM_CONFIG_PREFIX"/lib/node_modules \
@@ -166,7 +181,6 @@ function process-html {
   script=${script-${host_scripts[$host]-}} \
   style=${style-${host_styles[$host]-}} \
   styles_disabled=${styles_disabled-${styles_disabled_hosts[$host]-}} \
-  local path=$2
   node - "$url" "$path" << \EOF
 const puppeteer = require("puppeteer-core");
 
@@ -200,7 +214,7 @@ const puppeteer = require("puppeteer-core");
 
     await page.evaluate(
       (script, stylesDisabled) => {
-        [...document.querySelectorAll("*")].forEach((element) => {
+        for (const element of document.querySelectorAll("*")) {
           const style = getComputedStyle(element);
           if (["fixed", "sticky"].includes(style.position)) {
             element.setAttribute("style", "display: none !important");
@@ -211,7 +225,7 @@ const puppeteer = require("puppeteer-core");
           if (style.whiteSpace === "pre") {
             element.style.whiteSpace = "pre-wrap";
           }
-        });
+        }
 
         eval(script);
 
@@ -267,45 +281,55 @@ EOF
 }
 
 function deactivate-links {
-  local string='/S /URI'
   local path=$1
-  sed -i "s|$string\b|$(printf "%${#string}s")|g" "$path"
+
+  local string='/S /URI'
+  local placeholder=$(printf "%${#string}s")
+  sed -i "s|$string\b|$placeholder|g" "$path"
 }
 
 function confirm-upload {
   local path=$1
+
   read -p "Upload '$path'? [Y/n] "
   [[ $REPLY =~ ^[Yy]*$ ]]
 }
 
 function truncate-filename {
   local filename=$1
-  while (($(wc -c <<< "$filename") > 255)); do
+
+  local size=$(wc -c <<< "$filename")
+  while ((size > 255)); do
     local suffix=.${filename##*.}
     filename=${filename::-$((${#suffix} + 1))}$suffix
   done
+
   echo "$filename"
 }
 
 function upload-article {
+  local path=$1
   local title=$2
-  local filename=$(truncate-filename "${title//\//∕}".pdf)
+
+  local basename=${title//\//∕}
+  local filename=$(truncate-filename "$basename".pdf)
+
   if list-articles | grep -Fqx "$filename"; then
     echo "'$filename' already exists." >&2
     return 1
   fi
 
-  local path=$1
   copy-article "$path" personal:"$articles_path"/"$filename"
 }
 
 function process-url {
-  local url=$1
-  set -- "$(rewrite-url "$url")"
+  local input_url=$1
 
+  local url=$(rewrite-url "$input_url")
   local path=$(output-path "$url")
 
-  if [[ ${url%\?*} == *.pdf ]]; then
+  local queryless_url=${url%\?*}
+  if [[ $queryless_url == *.pdf ]]; then
     local title=$(process-pdf "$url" "$path")
   else
     local title=$(process-html "$url" "$path")
@@ -316,7 +340,7 @@ function process-url {
   deactivate-links "$path"
   exiftool -q -overwrite_original -Author="$url" "$path"
 
-  setsid xdg-open "$path" &> /dev/null &
+  xdg-open "$path" &> /dev/null
 
   ! confirm-upload "$title" || upload-article "$path" "$title"
   rm "$path"
@@ -331,7 +355,8 @@ function main {
   install-packages
 
   parse-options "$@"
-  shift "$((OPTIND - 1))"
+  local number=$((OPTIND - 1))
+  shift "$number"
 
   local url
   for url; do

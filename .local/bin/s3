@@ -2,6 +2,7 @@
 set -eu
 
 bucket=$1
+
 path=$XDG_RUNTIME_DIR/${0##*/}/$bucket
 
 if mountpoint -q "$path"; then

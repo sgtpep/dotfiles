@@ -1,15 +1,14 @@
-alias cal='ncal -b'
 alias copy='xsel -b'
 alias cp='cp -i'
 alias dd='dd bs=4M oflag=sync status=progress'
 alias df='df -h'
 alias du='du -h'
-alias json='python3 -m json.tool'
+alias json='python -m json.tool'
 alias ls='ls -h'
 alias mv='mv -i'
 alias rm='rm -I'
-alias serve='python3 -m http.server'
-alias unmount='udiskie-mount -ad'
+alias serve='python -m http.server'
+alias unmount='gio mount -e /run/media/"$USER"/*'
 alias watch='watch '
 
 function pass {

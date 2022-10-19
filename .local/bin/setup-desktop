@@ -54,7 +54,8 @@ function configure-console-font {
 
 function configure-fontconfig {
   local path=~/.config/fontconfig/fonts.conf
-  mkdir -p "${path%/*}"
+  local directory=${path%/*}
+  mkdir -p "$directory"
   cat > "$path" << \EOF
 <fontconfig>
   <match target="font">
@@ -110,7 +111,8 @@ EOF
 
 function configure-openbox {
   local path=~/.config/openbox/rc.xml
-  mkdir -p "${path%/*}"
+  local directory=${path%/*}
+  mkdir -p "$directory"
   cat > "$path" << \EOF
 <openbox_config>
   <applications>
@@ -169,7 +171,8 @@ EOF
 
 function configure-power-manager {
   local path=~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml
-  mkdir -p "${path%/*}"
+  local directory=${path%/*}
+  mkdir -p "$directory"
   cat > "$path" << \EOF
 <channel name="xfce4-power-manager" version="1.0">
   <property name="xfce4-power-manager" type="empty">
@@ -244,7 +247,8 @@ function install-facetimehd {
   local name=facetimehd-firmware
   local branch=master
   local path=/tmp/$name-$branch
-  wget -O - https://github.com/patjak/"$name"/archive/refs/heads/"$branch".tar.gz | tar -xz -C "${path%/*}"
+  local directory=${path%/*}
+  wget -O - https://github.com/patjak/"$name"/archive/refs/heads/"$branch".tar.gz | tar -xz -C "$directory"
 
   cd "$path"
   install-packages cpio curl xz-utils
@@ -255,7 +259,8 @@ function install-facetimehd {
   local name=bcwc_pcie
   local branch=master
   local path=/tmp/facetimehd-$branch
-  wget -O - https://github.com/patjak/"$name"/archive/refs/heads/"$branch".tar.gz | tar -xz -C "${path%/*}"
+  local directory=${path%/*}
+  wget -O - https://github.com/patjak/"$name"/archive/refs/heads/"$branch".tar.gz | tar -xz -C "$directory"
 
   local version=0.1
   local source=/usr/src/$name-$version

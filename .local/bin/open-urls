@@ -1,8 +1,11 @@
 #!/bin/bash
 set -eu
 
+[[ ${FLOCK-} == $0 ]] || FLOCK=$0 exec flock "$0" "$SHELL" -"$-" "$0" "$@"
+
 function write-file {
   local path=$1
+
   local temp=$path~
   cat > "$temp"
   mv "$temp" "$path"
@@ -10,25 +13,20 @@ function write-file {
 
 path=~/.urls
 while [[ -s $path ]]; do
+  limit=10
+  delay=15
+
   uniq "$path" | write-file "$path"
 
-  length=10
-  urls=$(head -n "$length" "$path")
-  status=0
-  errors=$(xargs -r x-www-browser <<< "$urls" 2>&1) || status=$?
+  urls=$(head -n "$limit" "$path")
 
-  if [[ $status != 0 ]]; then
-    if [[ $errors == *'OpenUrl rate limit exceeded'* ]]; then
-      sleep 15
-      continue
-    else
-      exit "$status"
-    fi
-  fi
+  xargs -n 1 -r xdg-open <<< "$urls"
 
   log=$path-log
   echo "$urls" >> "$log"
   tail -n 100 "$log" | write-file "$log"
 
-  sed -i "1,${length}d" "$path"
+  sed -i "1,${limit}d" "$path"
+
+  [[ -s $path ]] || sleep "$delay"
 done

@@ -16,6 +16,7 @@ HISTSIZE=10000
 PROMPT_COMMAND='
 : "$?"
 [[ $_ == 0 ]] || echo -e "\e[4mExit status: $_\e[m" >&2
+
 history -a
 '
 
@@ -23,7 +24,7 @@ PS1=$'$(
   [[ -d $PWD/.git && $PWD != ~ ]] || exit 0
 
   name=__git_ps1
-  type -t "$name" > /dev/null || . /usr/lib/git-core/git-sh-prompt
+  type -t "$name" > /dev/null || . /usr/share/git-core/contrib/completion/git-prompt.sh
   "$name" \'(%s) \'
 )\W $ '
 

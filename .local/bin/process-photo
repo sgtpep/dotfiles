@@ -14,14 +14,18 @@ function lowercase-extensions {
     [[ -f $path ]] || continue
 
     local extension=${path##*.}
-    mv "$path" "${path%.*}"."${extension,,}"
+    local target=${path%.*}.${extension,,}
+    mv "$path" "$target"
   done
 }
 
 function normalize-extensions {
   local path
   for path; do
-    [[ ! -f $path ]] || mv "$path" "${path%.*}".jpg
+    [[ -f $path ]] || continue
+
+    local basename=${path%.*}
+    mv "$path" "$basename".jpg
   done
 }
 
@@ -34,8 +38,10 @@ function rename-whatsapp {
   for path; do
     [[ -f $path && $path =~ /[^-]+-([[:digit:]]{4})([[:digit:]]{2})([[:digit:]]{2})-WA0*[[:digit:]]*\.[^.]+$ ]] || continue
 
+    local base_path=${path%/*}/${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}
+    local extension=${path##*.}
     local destination
-    for destination in "${path%/*}"/"${BASH_REMATCH[1]}"-"${BASH_REMATCH[2]}"-"${BASH_REMATCH[3]}"{,_{1..1000}}."${path##*.}"; do
+    for destination in "$base_path"{,_{1..1000}}."$extension"; do
       [[ ! -f $destination ]] || continue
 
       mv "$path" "$destination"
@@ -45,15 +51,15 @@ function rename-whatsapp {
 }
 
 function main {
-  install-packages
-
   [[ $@ ]] || set -- .
+
+  install-packages
 
   local path
   for path; do
     [[ -d $path ]]
-    local directory=${path%/}
 
+    local directory=${path%/}
     lowercase-extensions "$directory"/*.{JPEG,JPG}
     normalize-extensions "$directory"/*.jpeg
     rename-dated "$directory"/*.jpg

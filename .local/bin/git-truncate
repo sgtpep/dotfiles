@@ -2,6 +2,7 @@
 set -eu
 
 commit=$1
+
 git checkout --orphan temp "$commit"
 git commit -m 'Truncate history'
 git rebase --onto temp "$commit" master

@@ -1,0 +1,5 @@
+#!/bin/bash
+set -eu
+
+! command -v gio || exec gio open "$@"
+exec setsid -f /usr/bin/"${0##*/}" "$@"

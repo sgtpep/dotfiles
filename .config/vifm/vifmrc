@@ -11,14 +11,14 @@ set ignorecase
 set smartcase
 
 filetype <application/gzip,application/x-tar> tar -x -f %f
-filetype <application/json> editor -- %f
+filetype <application/json> vim -- %f
 filetype <application/zip> unzip -- %f
 fileviewer <audio/*,image/*,video/*> file -b -- %f
 filextype <*> xdg-open %f %i &
 
 nnoremap <silent> E :edit<CR>
 nnoremap <silent> gh :cd ~<CR>
-nnoremap <silent> gm :cd /media/$USER<CR>
+nnoremap <silent> gm :cd /run/media/$USER<CR>
 nnoremap <silent> yn :!echo -n %f | xsel -b &<CR>
 nnoremap <silent> yp :!echo -n %f:p | xsel -b &<CR>
 nnoremap q ZQ

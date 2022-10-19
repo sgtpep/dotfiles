@@ -8,12 +8,10 @@ find "$directory" -type f -mtime +1 -delete
 
 filename=${path##*/}
 if [[ $filename == *.* ]]; then
-  command=xdg-open
   destination=$directory/.$filename
 else
-  command=x-www-browser
   destination=$path.html
 fi
 
 mv "$path" "$destination"
-setsid "$command" "$destination" &> /dev/null &
+xdg-open "$destination" &> /dev/null &

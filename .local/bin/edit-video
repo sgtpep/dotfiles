@@ -2,26 +2,32 @@
 set -eu
 
 input=$1
+action=$2
+shift 2
+
 output=${1%.*}~.${1##*.}
 
-action=$2
 if [[ $action == concat ]]; then
-  arguments=("${@:3}")
+  paths=("$@")
+
   path=$XDG_RUNTIME_DIR/ffmpeg-input
-  printf 'file %q\n' "$input" "${arguments[@]}" > "$path"
+  printf 'file %q\n' "$input" "${paths[@]}" > "$path"
 
   ffmpeg -f concat -safe 0 -i "$path" -c copy "$output"
   rm "$path"
 
-  for argument in "${arguments[@]}"; do
-    mv "$argument" "${argument%/*}"/."${argument##*/}"
+  for path in "${paths[@]}"; do
+    target=${path%/*}/.${path##*/}
+    mv "$path" "$target"
   done
 elif [[ $action == cut ]]; then
-  start=$3
-  end=$4
+  start=$1
+  end=$2
+
   ffmpeg -i "$input" -c copy -ss "$start" ${end:+-to "$end"} "$output"
 elif [[ $action == rotate ]]; then
-  angle=$3
+  angle=$1
+
   ffmpeg -i "$input" -c copy -metadata:s:v rotate="$angle" "$output"
 fi
 
