@@ -8,6 +8,7 @@ alias ls='ls -h'
 alias mv='mv -i'
 alias rm='rm -I'
 alias serve='python -m http.server'
+alias sudo='sudo '
 alias unmount='gio mount -e /run/media/"$USER"/*'
 alias watch='watch '
 
@@ -16,12 +17,11 @@ function pass {
   command pass "$@"
 }
 
-function rg {
-  command rg -p --color=always "$@" |& less
-  return "${PIPESTATUS[0]}"
+function pwdhash {
+  command pwdhash "$@" | xsel -b
 }
 
-function sshuttle {
-  local subnet=$(ssh -G personal | grep -Po '(?<=^hostname ).+')
-  command sshuttle -r personal -x "$subnet" --dns 0/0 |& grep -v DeprecationWarning
+function rg {
+  command rg -p --color=always "$@" |& less -R
+  return "${PIPESTATUS[0]}"
 }

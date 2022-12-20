@@ -62,12 +62,18 @@ folder-hook Feeds 'set sort=date-received'
 folder-hook Feeds|Trash 'unset trash'
 
 color attachment default default
+color error default default
 color hdrdefault default default
-color indicator black white
+color indicator color0 color15
 color markers default default
+color message default default
 color normal default default
 color quoted default default
 color signature default default
+color search default default
 color status default default
 color tilde default default
 color tree default default
+color underline default default
+uncolor body *
+uncolor header *

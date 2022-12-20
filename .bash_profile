@@ -1,3 +1,4 @@
+export EDITOR=vim
 export LESS='-FRXi -j 3'
 export MANWIDTH=80
 export NO_COLOR=true
@@ -6,10 +7,16 @@ export PYTHONUSERBASE=~/.pip
 export RIPGREP_CONFIG_PATH=~/.ripgreprc
 export SDCV_PAGER=less
 
-[[ ${PATH/~} != $PATH ]] || export PATH=~/.local/bin:$PATH:$NPM_CONFIG_PREFIX/bin:$PYTHONUSERBASE/bin
+[[ $PATH == ~/* ]] || export PATH=~/.local/bin:$PATH:$NPM_CONFIG_PREFIX/bin:$PYTHONUSERBASE/bin
 
-. ~/.bashrc
+for number in {0..15}; do
+  printf "\e]4;$number;${color-Black}\a"
+  color=White
+done
+unset color number
 
 path=~/.bash_profile_local
 [[ ! -f $path ]] || . "$path"
 unset path
+
+. ~/.bashrc

@@ -14,4 +14,6 @@ else
 fi
 
 mv "$path" "$destination"
-xdg-open "$destination" &> /dev/null &
+
+setsid xdg-open "$destination" &> /dev/null &
+sleep 0.1

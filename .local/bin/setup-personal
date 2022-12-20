@@ -1,40 +1,39 @@
 #!/bin/bash
 set -eu
 
+email=mail'@'danil.mobi
+hostname=danil.mobi
+letsencrypt=/etc/letsencrypt
+root=/var/www/html
+
 function run-actions {
   local action=$1
 
   local rsync=(rsync -FOahvz --progress)
   local path=~/Downloads/personal
 
-  if [[ $action == backup ]]; then
-    "${rsync[@]}" --delete personal: "$path"
-  elif [[ $action == restore ]]; then
-    "${rsync[@]}" -u "$path"/ personal:
-  else
-    return 1
-  fi
+  [[ $action != backup ]] || exec "${rsync[@]}" --delete personal: "$path"
+  [[ $action != restore ]] || exec "${rsync[@]}" -u "$path"/ personal:
+
+  return 1
 }
 
 function setup-user {
-  ! ssh personal '[[ -d ~/.ssh ]]' || return 0
+  local directory=.ssh
+  ! ssh personal "[[ -d $directory ]]" || return 0
 
   local timezone=$(readlink /etc/localtime | sed 's|^/usr/share/zoneinfo/||')
   local user=danil
   local password=$(sudo grep -Po "(?<=^$user:)[^:]+" /etc/shadow)
 
   ssh root@personal "$SHELL" -"$-" << EOF
-  timedatectl set-timezone '$timezone'
+  timedatectl set-timezone "$timezone"
 
-  id '$user' &> /dev/null || useradd -m -G sudo -s "\$SHELL" '$user'
-  chpasswd -e <<< '$user:$password'
+  id "$user" &> /dev/null || useradd -m -G sudo -s "\$SHELL" "$user"
+  chpasswd -e <<< "$user:$password"
 
-  path=~/.ssh
-  home=~$user
-  cp -r "\$path" "\$home"
-
-  target=\$home\${path#~}
-  chown -R '$user': "\$target"
+  cp -r "$directory" ~$user
+  chown -R "$user": ~$user/"$directory"
 EOF
 }
 
@@ -87,15 +86,15 @@ function add-notes-key {
   grep -Fqx "$line" "$path" || echo "$line" >> "$path"
 }
 
-email=mail'@'danil.mobi
-
 function configure-msmtp {
   local aliases=/etc/aliases
   sudo tee "$aliases" > /dev/null <<< "default: $email"
 
   local netrc=~/.netrc
-  local host=$(grep -Po '(?<=\bmachine\s)\s*mail\.[^\s]+' "$netrc")
+  local filename=${netrc#~/.}
+  sudo ln -fs "$netrc" /etc/"$filename"
 
+  local host=$(grep -Po '(?<=\bmachine\s)\s*mail\.[^\s]+' "$netrc")
   sudo tee /etc/msmtprc > /dev/null << EOF
 account default
   aliases $aliases
@@ -108,8 +107,7 @@ account default
   user $email
 EOF
 
-  local filename=${netrc#~/.}
-  sudo ln -fs "$netrc" /etc/"$filename"
+  sudo tee /etc/cron.d/dead-letter > /dev/null <<< '0 * * * * '"$USER"' path=~/dead.letter && [ -f "$path" ] && mail -s "${path##*/}" "$LOGNAME" < "$path" && rm "$path"'
 }
 
 function configure-ufw {
@@ -120,9 +118,8 @@ function configure-ufw {
     grep -q "^$port " <<< "$output" || sudo ufw allow "$port"
   done
 
-  if ! grep -q ' active$' <<< "$output"; then
-    yes | sudo ufw enable
-  fi
+  ! grep -q ' active$' <<< "$output" || return 0
+  yes | sudo ufw enable
 }
 
 function configure-unattended-upgrades {
@@ -162,48 +159,33 @@ PATH=/usr/bin:/bin:$HOME/.local/bin
 EOF
 }
 
-hostname=danil.mobi
-
-www_path=/var/www/html
-
 function setup-certbot {
-  local path=/etc/letsencrypt/cli.ini
-
-  local character=$(tail -c 1 "$path")
-  [[ ! $character ]] || sudo tee -a "$path" > /dev/null <<< ''
-
   local name=post-hook
-  grep -q "^$name " "$path" || sudo tee -a "$path" > /dev/null <<< "$name = systemctl reload nginx"
+  local path=$letsencrypt/cli.ini
+  grep -q "^$name " "$path" || sudo tee -a "$path" > /dev/null <<< $'\n'"$name = systemctl reload nginx"
 
-  local directory=${path%/*}
-  [[ -d $directory/live ]] || sudo certbot certonly -d "$hostname" -m "$email" -w "$www_path" --agree-tos --no-eff-email --webroot
+  [[ -d $letsencrypt/live ]] || sudo certbot certonly -d "$hostname" -m "$email" -w "$root" --agree-tos --no-eff-email --webroot
 }
 
-function setup-nginx {
-  setup-certbot
-
-  sudo rm -fr "$www_path"
-  sudo ln -fs ~/www "$www_path"
-
-  sudo usermod -a -G adm "$USER"
-
+function configure-nginx {
   local path=/etc/nginx/sites-enabled/default
   local checksum=$(md5sum "$path")
 
-  local certificate=/etc/letsencrypt/live/$hostname
+  local certificate=$letsencrypt/live/$hostname
   sudo tee "$path" > /dev/null << EOF
+server_tokens off;
+
 server {
-  listen 80 default_server;
-  listen [::]:80 default_server;
   return 301 https://\$host\$request_uri;
 }
 
 server {
+  listen 443 ssl;
+  listen [::]:443 ssl;
+
   add_header Strict-Transport-Security 'max-age=63072000; includeSubDomains; preload';
   gzip on;
-  listen 443 ssl default_server;
-  listen [::]:443 ssl default_server;
-  root $www_path;
+  root $root;
   ssl_certificate $certificate/fullchain.pem;
   ssl_certificate_key $certificate/privkey.pem;
 
@@ -225,6 +207,16 @@ server {
 EOF
 
   md5sum -c --status <<< "$checksum" || sudo systemctl reload nginx
+}
+
+function setup-nginx {
+  setup-certbot
+  configure-nginx
+
+  sudo rm -fr "$root"
+  sudo ln -fs ~/www "$root"
+
+  sudo usermod -a -G adm "$USER"
 }
 
 function setup-tasks {
@@ -277,4 +269,4 @@ function main {
   confirm-reboot
 }
 
-[[ -v BASH_SOURCE[0] && ${BASH_SOURCE[0]##*/} != ${0##*/} ]] || main "$@"
+[[ ! -v SSH_CONNECTION && ${BASH_SOURCE[0]} != $0 ]] || main "$@"

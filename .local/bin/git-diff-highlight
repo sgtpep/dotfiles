@@ -1,4 +1,5 @@
 #!/bin/bash
 set -eu
 
-exec perl -I /usr/share/doc/git/contrib/diff-highlight -MDiffHighlight -e 'DiffHighlight::highlight_stdin()'
+module=DiffHighlight
+exec perl -I /usr/share/doc/git/contrib/diff-highlight -M"$module" -e "$module"'::highlight_stdin()'

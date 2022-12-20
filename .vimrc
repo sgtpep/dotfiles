@@ -41,10 +41,12 @@ function s:comment_line(line, mask, opening, closing, indent)
 
   let width = strlen(a:indent)
   let indent = width ? line[:width - 1] : ''
-  let line = printf('%s%s %s', indent, a:opening, line[width:])
+  let content = line[width:]
+  let space = empty(content) ? '' : ' '
+  let line = indent . a:opening . space . content
 
   if !empty(a:closing)
-    let line .= ' ' . a:closing
+    let line .= space . a:closing
   endif
 
   return line
@@ -62,12 +64,15 @@ function s:line_commented(line, mask, opening, closing)
   endif
 
   let trimmed_line = trim(a:line, a:mask, 2)
-  let commented = strridx(trimmed_line, a:closing) == strlen(trimmed_line) - strlen(a:closing)
+  let trimmed_closing = trim(a:closing)
+  let commented = strridx(trimmed_line, trimmed_closing) == strlen(trimmed_line) - strlen(trimmed_closing)
   return commented
 endfunction
 
 function s:uncomment_line(line, mask, opening, closing)
   if !s:line_commented(a:line, a:mask, a:opening, a:closing)
+    echo [a:line]
+    foo
     return a:line
   endif
 
@@ -76,6 +81,13 @@ function s:uncomment_line(line, mask, opening, closing)
   let [start_pattern, end_pattern] = ['^' . pattern, pattern . '$']
   let start = matchstr(line, start_pattern)
   let end = matchstr(line, end_pattern)
+
+  let opening_closing = trim(a:opening, a:mask, 2) . trim(a:closing, a:mask, 1)
+  let index = strridx(line, opening_closing)
+  let length = len(line) - len(opening_closing)
+  if index == length
+    let line = ''
+  endif
 
   let string = start . a:opening
   let index = stridx(line, string)
@@ -92,8 +104,11 @@ function s:uncomment_line(line, mask, opening, closing)
     let line_length = strlen(line)
     let string_length = strlen(string)
     if index == line_length - string_length
+      let line = line[:-(string_length + 1)]
       let end_length = strlen(end)
-      let line = line[:-(string_length + 1)] . line[-end_length:]
+      if end_length
+        let line = line[:-(end_length - 1)]
+      endif
     endif
   endif
 
@@ -134,7 +149,8 @@ function s:comment_code() range
       let full_closing = ' ' . closing
     endif
 
-    let commented_lines = filter(copy(nonempty_lines), {_, line -> stridx(line, full_opening) != -1 && strridx(line, full_closing) != -1})
+    let opening_closing = opening . closing
+    let commented_lines = filter(copy(nonempty_lines), {_, line -> stridx(line, full_opening) != -1 && strridx(line, full_closing) != -1 || strridx(line, opening_closing) == len(line) - len(opening_closing)})
     let commented_line_length = len(commented_lines)
     let nonempty_line_length = len(nonempty_lines)
     if commented_line_length == nonempty_line_length
@@ -197,8 +213,13 @@ function s:format_code()
 endfunction
 
 function s:update_path()
-  let output = systemlist('git ls-files')
-  let paths = map(output, {_, path -> path =~ '/' ? fnamemodify(path, ':h') : ''})
+  if isdirectory('.git')
+    let output = systemlist('git ls-files')
+    let paths = map(output, {_, path -> path =~ '/' ? fnamemodify(path, ':h') : ''})
+  else
+    let paths = systemlist('find -type d')
+  endif
+
   call sort(paths)
   call uniq(paths)
   call extend(paths, [''], 0)
@@ -232,7 +253,7 @@ function s:map_keys()
   nnoremap <silent> <Leader>n :cnext<CR>
   nnoremap <silent> <Leader>p :cprevious<CR>
   nnoremap <silent> <Leader>r :call <SID>format_code()<CR>
-  nnoremap <silent> <Leader>y :call system('xsel -b', expand('%'))<CR>
+  nnoremap <silent> <Leader>y :call system('xsel -bi', expand('%'))<CR>
   nnoremap Q <Nop>
   vnoremap <silent> <Leader>/ :call <SID>comment_code()<CR>
   vnoremap <silent> <Leader>s :sort<CR>
@@ -280,12 +301,16 @@ function s:set_options()
 
   set ignorecase
   set smartcase
+  set nohlsearch
+  set noincsearch
 
   set noruler
   set nostartofline
   set notitle
+  set scrolloff=0
   set shortmess+=I
 
+  set nowildmenu
   set wildignorecase
   set wildmode=list:longest,list:full
 

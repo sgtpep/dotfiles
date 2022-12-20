@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eu
+
+packages=("$@")
+
+[[ ${packages[@]} ]] || exit
+
+installed_packages=$(dnf -C list --installed "${packages[@]}" 2> /dev/null | sed '1d; s/\..*$//; s/\n/ /' | tr '\n' ' ')
+[[ $installed_packages == "${packages[@]} " ]] || sudo dnf -y install "${packages[@]}"

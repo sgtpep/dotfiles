@@ -28,8 +28,9 @@ done < <(
     path=~/notes
     if [[ -d $path ]]; then
       cat "$path"/"$filename"
-    else
-      git -C ~/repositories/notes.git show master:"$filename"
+      continue
     fi
+
+    git -C ~/repositories/notes.git show master:"$filename"
   done
 )

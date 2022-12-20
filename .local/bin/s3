@@ -8,7 +8,8 @@ path=$XDG_RUNTIME_DIR/${0##*/}/$bucket
 if mountpoint -q "$path"; then
   mounted=true
 else
-  eval "$(pass aws)"
+  output="$(pass aws)"
+  eval "$output"
 
   mkdir -p "$path"
   rclone mount --daemon s3:"$bucket" "$path"

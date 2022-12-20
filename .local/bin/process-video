@@ -7,12 +7,12 @@ function convert-video {
   [[ $input != *.mp4 ]] || return 0
   ! ffprobe "$input" |& grep -q ' encoder ' || return 0
 
-  local output=${input%.*}~.mp4
-  ffmpeg -y -i "$input" -vf 'scale=-2:min(ih\, 720)' "$output"
+  local copy=${input%.*}~.mp4
+  ffmpeg -y -i "$input" -vf 'scale=-2:min(ih\, 720)' "$copy"
   rm -f "$input"
 
   local target=${input%.*}.mp4
-  mv "$output" "$target"
+  mv "$copy" "$target"
 }
 
 function convert-videos {
@@ -24,6 +24,8 @@ function convert-videos {
 
 function main {
   [[ $@ ]] || set -- .
+
+  install-packages ffmpeg
 
   . process-photo
 
@@ -39,4 +41,4 @@ function main {
   done
 }
 
-[[ -v BASH_SOURCE[0] && ${BASH_SOURCE[0]##*/} != ${0##*/} ]] || main "$@"
+[[ ${BASH_SOURCE[0]} != $0 ]] || main "$@"

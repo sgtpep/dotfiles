@@ -6,9 +6,9 @@ set -eu
 function write-file {
   local path=$1
 
-  local temp=$path~
-  cat > "$temp"
-  mv "$temp" "$path"
+  local copy=$path~
+  cat > "$copy"
+  mv "$copy" "$path"
 }
 
 path=~/.urls
@@ -20,13 +20,14 @@ while [[ -s $path ]]; do
 
   urls=$(head -n "$limit" "$path")
 
-  xargs -n 1 -r xdg-open <<< "$urls"
+  setsid xargs -n 1 -r xdg-open <<< "$urls" &> /dev/null &
+  sleep 0.1
 
-  log=$path-log
+  log=$path.log
   echo "$urls" >> "$log"
   tail -n 100 "$log" | write-file "$log"
 
   sed -i "1,${limit}d" "$path"
 
-  [[ -s $path ]] || sleep "$delay"
+  [[ ! -s $path ]] || sleep "$delay"
 done

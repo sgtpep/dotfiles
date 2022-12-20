@@ -4,7 +4,8 @@ set -eu
 name=$1
 base=${2-}
 
-if [[ $(git status -s) ]]; then
+status=$(git status -s)
+if [[ $status ]]; then
   git stash
   stashed=1
 fi

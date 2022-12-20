@@ -23,9 +23,9 @@ history -a
 PS1=$'$(
   [[ -d $PWD/.git && $PWD != ~ ]] || exit 0
 
-  name=__git_ps1
-  type -t "$name" > /dev/null || . /usr/share/git-core/contrib/completion/git-prompt.sh
-  "$name" \'(%s) \'
+  command=__git_ps1
+  type -t "$command" > /dev/null || . /usr/share/git-core/contrib/completion/git-prompt.sh
+  "$command" \'(%s) \'
 )\W $ '
 
 shopt -s autocd

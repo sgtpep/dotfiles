@@ -1,6 +1,9 @@
 #!/bin/bash
 set -eu
 
+characters=fdsagrewcx
+pattern=$'\\bh\n?t\n?t\n?p\n?s?\n?:\n?/\n?/\n?'
+
 function read-text {
   local path=$XDG_RUNTIME_DIR/${0##*/}
   local text=$(< "$path")
@@ -8,8 +11,6 @@ function read-text {
 
   echo "$text"
 }
-
-pattern=$'\\bh\n?t\n?t\n?p\n?s?\n?:\n?/\n?/\n?'
 
 function parse-urls {
   local text=$1
@@ -26,8 +27,6 @@ function parse-urls {
     echo "$index"
   done
 }
-
-characters=fdsagrewcx
 
 function generate-label {
   local index=$1
@@ -137,7 +136,7 @@ function open-url {
   local url=$1
   local character=$2
 
-  [[ $url ]] || return 1
+  [[ $url ]] || return
 
   local lowercase_character=${character,}
   if [[ $character != $lowercase_character ]]; then
@@ -145,7 +144,8 @@ function open-url {
     return
   fi
 
-  xdg-open "$url" &> /dev/null &
+  setsid xdg-open "$url" &> /dev/null &
+  sleep 0.1
 }
 
 function main {
@@ -166,4 +166,4 @@ function main {
   open-url "$url" "$character"
 }
 
-[[ -v BASH_SOURCE[0] && ${BASH_SOURCE[0]##*/} != ${0##*/} ]] || main "$@"
+[[ ${BASH_SOURCE[0]} != $0 ]] || main "$@"

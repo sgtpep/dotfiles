@@ -1,13 +1,6 @@
 #!/bin/bash
 set -eu
 
-function install-packages {
-  local packages=(
-    libimage-exiftool-perl
-  )
-  dpkg -s "${packages[@]}" &> /dev/null || sudo apt -y install "${packages[@]}"
-}
-
 function lowercase-extensions {
   local path
   for path; do
@@ -53,7 +46,7 @@ function rename-whatsapp {
 function main {
   [[ $@ ]] || set -- .
 
-  install-packages
+  install-packages perl-Image-ExifTool
 
   local path
   for path; do
@@ -67,4 +60,4 @@ function main {
   done
 }
 
-[[ -v BASH_SOURCE[0] && ${BASH_SOURCE[0]##*/} != ${0##*/} ]] || main "$@"
+[[ ${BASH_SOURCE[0]} != $0 ]] || main "$@"

@@ -1,16 +1,6 @@
 #!/bin/bash
 set -eu
 
-function install-packages {
-  local packages=(
-    mupdf-tools
-    pdfposter
-    poppler-utils
-    texlive-extra-utils
-  )
-  dpkg -s "${packages[@]}" &> /dev/null || sudo apt -y install "${packages[@]}"
-}
-
 function pdfjam {
   local output=$(command "${FUNCNAME[0]}" "$@" 2>&1)
   echo "$output" >&2
@@ -31,25 +21,25 @@ function generate-range {
   if [[ $range == {} ]]; then
     pdfjoin -o "$output" "$input" {},1
 
-    local temp=$output~
-    pdfjoin -o "$temp" "$output" 1
-    mv "$temp" "$output"
+    local copy=$output~
+    pdfjoin -o "$copy" "$output" 1
+    mv "$copy" "$output"
   elif [[ $range == ^ || $range == ^- ]]; then
     local path=${input%.pdf}.$cover.pdf
 
     [[ $range != ^ ]] || pdfjoin -o "$output" "$path" 1
 
-    local temp=$path~
-    pdfjoin -o "$temp" "$path" 2-
-    mv "$temp" "$path"
+    local copy=$path~
+    pdfjoin -o "$copy" "$path" 2-
+    mv "$copy" "$path"
   else
     local name=${range%x2}
     pdfjoin -o "$output" "$input" "$name"
 
     if [[ $range == *x2 ]]; then
-      local temp=$output~
-      mutool poster -x 2 "$output" "$temp" || pdfposter -p 2x1a4 "$output" "$temp"
-      mv "$temp" "$output"
+      local copy=$output~
+      mutool poster -x 2 "$output" "$copy" || pdfposter -p 2x1a4 "$output" "$copy"
+      mv "$copy" "$output"
     fi
   fi
 
@@ -82,10 +72,10 @@ function normalize-size {
 
   local path
   for path; do
-    local output=$path~
+    local copy=$path~
     local size="{${width}pt,${height}pt}"
-    pdfjam -o "$output" --papersize "$size" "$path"
-    mv "$output" "$path"
+    pdfjam -o "$copy" --papersize "$size" "$path"
+    mv "$copy" "$path"
   done
 }
 
@@ -112,7 +102,7 @@ function main {
   local path=$1
   shift
 
-  install-packages
+  install-packages pdfposter poppler-utils texlive-pdfbook2
 
   local input=$path
 
@@ -135,4 +125,4 @@ function main {
   generate-booklet "$input" "$output"
 }
 
-[[ -v BASH_SOURCE[0] && ${BASH_SOURCE[0]##*/} != ${0##*/} ]] || main "$@"
+[[ ${BASH_SOURCE[0]} != $0 ]] || main "$@"
