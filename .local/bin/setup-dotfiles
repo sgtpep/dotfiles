@@ -8,6 +8,7 @@ function install-packages {
     ImageMagick
     aria2
     bash{,-completion}
+    bzip2
     calc
     curl
     git

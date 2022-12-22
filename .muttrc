@@ -64,7 +64,7 @@ folder-hook Feeds|Trash 'unset trash'
 color attachment default default
 color error default default
 color hdrdefault default default
-color indicator color0 color15
+color indicator reverse default default
 color markers default default
 color message default default
 color normal default default

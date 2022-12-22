@@ -37,5 +37,5 @@ function Sync()
   endif
 endfunction
 
-autocmd BufWritePost * update | call Sync() | set autoread! | checktime | set autoread!
+autocmd BufWritePost * update | call Sync() | set autoread | checktime
 " "$@"

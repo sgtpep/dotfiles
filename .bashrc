@@ -31,3 +31,5 @@ PS1=$'$(
 shopt -s autocd
 shopt -s histappend
 stty -ixon
+
+# Lima BEGIN
