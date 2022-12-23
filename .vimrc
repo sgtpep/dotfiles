@@ -195,15 +195,15 @@ function s:format_code()
 
       call setline(1, lines)
 
-      let count = len(lines) + 1
-      let expression = printf('%d,$delete _', count)
+      let number = len(lines) + 1
+      let expression = printf('%d,$delete _', number)
       silent! execute expression
 
       call winrestview(view)
 
       if offset != -1
-        let count = offset + 1
-        let expression = printf('goto %d', count)
+        let number = offset + 1
+        let expression = printf('goto %d', number)
         execute expression
       endif
     endif
