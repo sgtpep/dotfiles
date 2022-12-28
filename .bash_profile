@@ -1,5 +1,5 @@
 export EDITOR=vim
-export LESS='-FRXi -j 3'
+export LESS='-FKRXi -j 3'
 export MANWIDTH=80
 export NO_COLOR=true
 export NPM_CONFIG_PREFIX=~/.npm
