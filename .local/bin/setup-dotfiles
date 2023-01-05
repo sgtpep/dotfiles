@@ -45,6 +45,7 @@ function install-pip-packages {
   local packages=(
     magic_wormhole
     pwdhash.py
+    yt-dlp
   )
 
   local package
