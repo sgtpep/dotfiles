@@ -4,8 +4,7 @@ set -eu
 function convert-video {
   local input=$1
 
-  [[ $input != *.mp4 ]] || return 0
-  ! ffprobe "$input" |& grep -q ' encoder ' || return 0
+  [[ $input != *.mp4 ]] || ! ffprobe "$input" |& grep -q ' encoder ' || return 0
 
   local copy=${input%.*}~.mp4
   ffmpeg -y -i "$input" -vf 'scale=-2:min(ih\, 720)' "$copy"
@@ -25,7 +24,7 @@ function convert-videos {
 function main {
   [[ $@ ]] || set -- .
 
-  install-packages ffmpeg
+  install-packages ffmpeg perl-Image-ExifTool
 
   . process-photo
 

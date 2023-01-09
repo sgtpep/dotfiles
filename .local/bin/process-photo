@@ -8,7 +8,9 @@ function lowercase-extensions {
 
     local extension=${path##*.}
     local target=${path%.*}.${extension,,}
-    mv "$path" "$target"
+    local copy=$target~
+    mv "$path" "$copy"
+    mv "$copy" "$target"
   done
 }
 
