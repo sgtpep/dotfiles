@@ -28,15 +28,13 @@ function rename-dated {
   exiftool '-FileName<CreateDate' -d '%Y-%m-%d-%H-%M-%S%%+c.%%le' "$@" || :
 }
 
-function rename-whatsapp {
+function rename-nokia {
   local path
   for path; do
-    [[ -f $path && $path =~ /[^-]+-([[:digit:]]{4})([[:digit:]]{2})([[:digit:]]{2})-WA0*[[:digit:]]*\.[^.]+$ ]] || continue
+    [[ -f $path && $path =~ /[^-]+_([[:digit:]]{4})([[:digit:]]{2})([[:digit:]]{2})_([[:digit:]]{2})([[:digit:]]{2})([[:digit:]]{2}).*\.[^.]+$ ]] || continue
 
-    local base_path=${path%/*}/${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}
-    local extension=${path##*.}
     local destination
-    for destination in "$base_path"{,_{1..1000}}."$extension"; do
+    for destination in "${path%/*}"/"${BASH_REMATCH[1]}"-"${BASH_REMATCH[2]}"-"${BASH_REMATCH[3]}"-"${BASH_REMATCH[4]}"-"${BASH_REMATCH[5]}"-"${BASH_REMATCH[6]}"{,_{1..1000}}."${path##*.}"; do
       [[ ! -f $destination ]] || continue
 
       mv "$path" "$destination"
@@ -58,7 +56,7 @@ function main {
     lowercase-extensions "$directory"/*.{JPEG,JPG}
     normalize-extensions "$directory"/*.jpeg
     rename-dated "$directory"/*.jpg
-    rename-whatsapp "$directory"/*.jpg
+    rename-nokia "$directory"/*.jpg
   done
 }
 

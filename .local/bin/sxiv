@@ -1,0 +1,12 @@
+#!/bin/bash
+set -eu
+
+path=/usr/bin/${0##*/}
+[[ -x $path ]] || install-packages fbida sxiv
+
+xrdb -merge << \EOF
+Sxiv.background: Black
+Sxiv.foreground: White
+EOF
+
+exec "$path" -fpr "$@"
