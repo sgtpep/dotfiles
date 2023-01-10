@@ -33,9 +33,13 @@ function main {
     [[ -d $path ]]
 
     local directory=${path%/}
+
     lowercase-extensions "$directory"/*.{3GP,AVI,MOV,MP4}
+
     rename-dated "$directory"/*.{3gp,avi,mov,mp4}
-    rename-whatsapp "$directory"/*.mp4
+    rename-kids-camera "$directory"/*.mp4
+    rename-nokia "$directory"/*.mp4
+
     convert-videos "$directory"/*.{3gp,avi,mov,mp4}
   done
 }

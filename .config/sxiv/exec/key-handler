@@ -20,8 +20,4 @@ elif [[ $key == e ]]; then
   gimp "${MAPFILE[@]}"
 elif [[ $key == y ]]; then
   printf '%s\n' "${MAPFILE[@]}" | head -c -1 | xsel -b
-elif [[ $key == m ]]; then
-  path=$XDG_RUNTIME_DIR/sxiv-target
-  x-terminal-emulator -e vifm --choose-dir="$path" "${MAPFILE[0]%/*/*}"
-  mv "${MAPFILE[@]}" "$(< "$path")"
 fi

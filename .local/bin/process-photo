@@ -28,6 +28,20 @@ function rename-dated {
   exiftool '-FileName<CreateDate' -d '%Y-%m-%d-%H-%M-%S%%+c.%%le' "$@" || :
 }
 
+function rename-kids-camera {
+  local path
+  for path; do
+    [[ -f $path && $path =~ /[A-Z]{3}A[0-9]{4}.*\.[^.]+$ ]] || continue
+
+    local datetime=$(stat -c %y "$path")
+    datetime=${datetime%.*}
+    datetime=${datetime//[ :]/-}
+
+    local extension=${path##*.}
+    mv "$path" "$datetime"."$extension"
+  done
+}
+
 function rename-nokia {
   local path
   for path; do
@@ -53,9 +67,12 @@ function main {
     [[ -d $path ]]
 
     local directory=${path%/}
+
     lowercase-extensions "$directory"/*.{JPEG,JPG}
     normalize-extensions "$directory"/*.jpeg
+
     rename-dated "$directory"/*.jpg
+    rename-kids-camera "$directory"/*.jpg
     rename-nokia "$directory"/*.jpg
   done
 }
