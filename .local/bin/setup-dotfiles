@@ -25,6 +25,7 @@ function install-packages {
     ripgrep
     rsync
     sdcv
+    sqlite
     tar
     tmux
     unzip
