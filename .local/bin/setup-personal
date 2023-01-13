@@ -194,8 +194,8 @@ server {
     log_not_found off;
   }
 
-  location ~ ^/((?:|[^/]+-)gallery)/ {
-    auth_basic 'Gallery';
+  location ~ ^/([^/]+-archive|(?:|[^/]+-)gallery)/ {
+    auth_basic 'Log In';
     auth_basic_user_file $HOME/.config/\$1/htpasswd;
   }
 
