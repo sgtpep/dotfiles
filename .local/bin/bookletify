@@ -1,6 +1,12 @@
 #!/bin/bash
 set -eu
 
+function install-packages {
+  local packages=("$@")
+
+  dpkg -s "${packages[@]}" &> /dev/null || sudo apt -y install "${packages[@]}"
+}
+
 function pdfjam {
   local output=$(command "${FUNCNAME[0]}" "$@" 2>&1)
   echo "$output" >&2
@@ -102,7 +108,7 @@ function main {
   local path=$1
   shift
 
-  install-packages pdfposter poppler-utils texlive-pdfbook2
+  install-packages mupdf-tools pdfposter poppler-utils texlive-extra-utils
 
   local input=$path
 
