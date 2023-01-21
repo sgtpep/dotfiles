@@ -50,6 +50,10 @@ deb https://security.debian.org/ $release-security main
 EOF
 }
 
+function download-bookletify {
+  download-dotfile .local/bin/bookletify
+}
+
 function upgrade-system {
   local path=/var/lib/apt/upgraded
   [[ ! -f $path ]] || return 0
@@ -263,6 +267,7 @@ function main {
   fi
 
   configure-apt-sources
+  download-bookletify
   upgrade-system
   install-packages
   setup-system
