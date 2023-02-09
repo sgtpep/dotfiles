@@ -22,7 +22,7 @@ function Sync()
     call Commit(paths)
   endif
 
-  let output = system('git pull -r')
+  let output = system('online git pull -r')
   let status = v:shell_error
 
   if filereadable('.git/REBASE_HEAD')
