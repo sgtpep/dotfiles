@@ -1,0 +1,38 @@
+colors:
+  primary:
+    background: "#000000"
+    foreground: "#ffffff"
+  normal:
+    black: "#000000"
+    blue: "#ffffff"
+    cyan: "#ffffff"
+    green: "#ffffff"
+    magenta: "#ffffff"
+    red: "#ffffff"
+    white: "#ffffff"
+    yellow: "#ffffff"
+  bright:
+    black: "#ffffff"
+cursor:
+  unfocused_hollow: false
+font:
+  normal:
+    family: DejaVu Sans Mono
+  offset:
+    y: 1
+  size: 14
+key_bindings:
+  - { key: V, mods: Alt|Control, action: "Paste" }
+mouse:
+  hide_when_typing: true
+scrolling:
+  history: 0
+selection:
+  save_to_clipboard: true
+shell:
+  program: /bin/bash
+  args: [-l, -c, exec tmux]
+window:
+  class: org.gnome.Terminal
+  startup_mode: Fullscreen
+  title: Terminal
