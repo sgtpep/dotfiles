@@ -12,6 +12,11 @@ alias sudo='sudo '
 alias unmount='gio mount -e /run/media/"$USER"/*'
 alias watch='watch '
 
+function less {
+  [[ -t 0 ]] || set -- "$@" -O /dev/null
+  command less "$@"
+}
+
 function pass {
   [[ $# != 1 || $1 == -* ]] || set -- -c "$@"
   command pass "$@"
