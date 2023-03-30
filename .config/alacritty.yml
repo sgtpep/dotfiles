@@ -21,6 +21,8 @@ font:
   offset:
     y: 1
   size: 14
+hints:
+  enabled: []
 key_bindings:
   - { key: V, mods: Alt|Control, action: "Paste" }
 mouse:
