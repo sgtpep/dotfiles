@@ -36,5 +36,8 @@ shell:
   args: [-l, -c, exec tmux]
 window:
   class: org.gnome.Terminal
+  dimensions:
+    columns: 125
+    lines: 32
   startup_mode: Fullscreen
   title: Terminal
