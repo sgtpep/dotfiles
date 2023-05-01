@@ -177,7 +177,7 @@ function s:format_code()
   let command = printf('NODE_NO_WARNINGS=1 %s --cursor-offset=%d --stdin-filepath=%s', executable, offset, shellescape(path))
   let input = getline(1, '$')
   let output = systemlist(command, input)
-  let lines = filter(output, {index, line -> index > 0 || line !~# '^npx: installed'})
+  let lines = filter(output, {index, line -> index > 0 || line !~# '^\(\[warn\] \|npx: installed\)'})
 
   if v:shell_error
     echo join(lines, "\n")
