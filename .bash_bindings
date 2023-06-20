@@ -30,3 +30,4 @@ bind '"\C-gs": "\C-e\C-ugit status \n"'
 
 bind '"\C-xf": "\C-e\C-uvifm \n"'
 bind '"\C-xl": "\C-e\e\\ |& less \n"'
+bind '"\C-xu": "\C-e\C-uunmount \n"'
