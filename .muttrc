@@ -46,7 +46,7 @@ macro index,pager A '<save-message>=Archive<Return><Return>'
 macro index,pager b '<view-attachments><search>text/html<Return><view-mailcap><exit><delete-message>'
 macro pager d '<delete-message><exit>'
 
-folder-hook . 'bind index D noop'
+folder-hook . 'bind index D delete-pattern'
 folder-hook . 'bind index,pager F flag-message'
 folder-hook . 'bind index,pager f forward-message'
 folder-hook . 'push <first-entry>'
