@@ -24,7 +24,9 @@ font:
 hints:
   enabled: []
 key_bindings:
-  - { key: V, mods: Alt|Control, action: "Paste" }
+  - { key: Equals, mods: Control, action: None }
+  - { key: Minus, mods: Control, action: None }
+  - { key: V, mods: Alt|Control, action: Paste }
 mouse:
   hide_when_typing: true
 scrolling:
