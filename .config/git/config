@@ -4,6 +4,9 @@ new-branch = !git-new-branch
 [core]
 pager = git-diff-highlight | less
 
+[diff]
+noprefix = true
+
 [interactive]
 diffFilter = git-diff-highlight
 
