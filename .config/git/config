@@ -7,6 +7,10 @@ pager = git-diff-highlight | less
 [diff]
 noprefix = true
 
+[diff "sqlite"]
+binary = true
+textconv = echo .dump | sqlite3
+
 [interactive]
 diffFilter = git-diff-highlight
 
