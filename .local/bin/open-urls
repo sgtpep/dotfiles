@@ -1,7 +1,10 @@
 #!/bin/bash
 set -eu
 
-[[ ${FLOCK-} == $0 ]] || FLOCK=$0 exec flock "$0" "$SHELL" -"$-" "$0" "$@"
+if [[ ${FLOCK-} != $0 ]]; then
+  path=/tmp/${0##*/}
+  FLOCK=$0 exec flock "$path" "$SHELL" -"$-" "$0" "$@"
+fi
 
 function write-file {
   local path=$1
@@ -10,6 +13,10 @@ function write-file {
   cat > "$copy"
   mv "$copy" "$path"
 }
+
+for command in chromium chromium-freeworld xdg-open; do
+  ! command -v "$command" > /dev/null || break
+done
 
 path=~/.urls
 while [[ -s $path ]]; do
@@ -20,7 +27,11 @@ while [[ -s $path ]]; do
 
   urls=$(head -n "$limit" "$path")
 
-  setsid xargs -n 1 -r xdg-open <<< "$urls" &> /dev/null &
+  args=("$command")
+  [[ $command != chromium* ]] || args+=(--password-store=basic)
+  [[ $command != xdg-open ]] || args=(-n 1 "${args[@]}")
+
+  setsid xargs -r -d '\n' "${args[@]}" <<< "$urls" &> /dev/null &
   sleep 0.1
 
   log=$path.log
