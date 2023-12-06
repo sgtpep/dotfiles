@@ -24,6 +24,8 @@ function convert-videos {
 function main {
   [[ $@ ]] || set -- .
 
+  . rename-window
+
   install-packages ffmpeg perl-Image-ExifTool
 
   . process-photo

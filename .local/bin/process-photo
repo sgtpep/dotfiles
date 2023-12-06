@@ -60,6 +60,8 @@ function rename-nokia {
 function main {
   [[ $@ ]] || set -- .
 
+  . rename-window
+
   install-packages perl-Image-ExifTool
 
   local path

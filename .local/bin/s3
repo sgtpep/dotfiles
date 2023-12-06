@@ -5,6 +5,8 @@ bucket=$1
 
 path=$XDG_RUNTIME_DIR/${0##*/}/$bucket
 
+. rename-window
+
 if mountpoint -q "$path"; then
   mounted=true
 else
