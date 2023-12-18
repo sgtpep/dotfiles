@@ -39,8 +39,9 @@ shell:
 window:
   class:
     general: org.gnome.Terminal
+  decorations: None
   dimensions:
     columns: 125
     lines: 32
-  startup_mode: Fullscreen
+  startup_mode: Maximized
   title: Terminal
