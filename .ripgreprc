@@ -3,4 +3,5 @@
 -g=!.git
 -g=!package-lock.json
 --hidden
+--no-ignore-parent
 --sort=path
