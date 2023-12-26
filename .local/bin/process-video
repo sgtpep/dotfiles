@@ -2,36 +2,36 @@
 set -eu
 
 function convert-video {
-  local input=$1
+  local path=$1
 
-  [[ $input != *.mp4 ]] || ! ffprobe "$input" |& grep -q ' encoder ' || return 0
+  [[ $path != *.mp4 ]] || return 0
+  ! ffprobe "$path" |& grep -q ' encoder ' || return 0
 
-  local copy=${input%.*}~.mp4
-  ffmpeg -y -i "$input" -vf 'scale=-2:min(ih\, 720)' "$copy"
-  rm -f "$input"
+  local copy=${path%.*}~.mp4
+  ffmpeg -y -i "$path" -vf 'scale=-2:min(ih\, 720)' "$copy"
+  rm -f "$path"
 
-  local target=${input%.*}.mp4
+  local target=${path%.*}.mp4
   mv "$copy" "$target"
 }
 
 function convert-videos {
+  local paths=("$@")
+
   local path
-  for path; do
+  for path in "${paths[@]}"; do
     [[ ! -f $path ]] || convert-video "$path"
   done
 }
 
 function main {
-  [[ $@ ]] || set -- .
+  local paths=("${@-.}")
 
   . rename-window
-
-  install-packages ffmpeg perl-Image-ExifTool
-
   . process-photo
 
   local path
-  for path; do
+  for path in "${paths[@]}"; do
     [[ -d $path ]]
 
     local directory=${path%/}

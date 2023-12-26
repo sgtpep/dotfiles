@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+from dbus.mainloop.glib import DBusGMainLoop
+from gi.repository import GLib
+import dbus
+import subprocess
+
+minute = 60 * 1000
+
+def get_session_bus():
+    DBusGMainLoop(set_as_default=True)
+    bus = dbus.SessionBus()
+    return bus
+
+def add_idle_monitor(bus, timeout, on_idle):
+    object = bus.get_object('org.gnome.Mutter.IdleMonitor', '/org/gnome/Mutter/IdleMonitor/Core')
+    interface = dbus.Interface(object, 'org.gnome.Mutter.IdleMonitor')
+
+    idle_id = interface.AddIdleWatch(timeout)
+    active_id = None
+
+    def on_watch_fired(id):
+        nonlocal active_id
+        power_save_mode = None
+        if id == idle_id:
+            active_id = interface.AddUserActiveWatch()
+            on_idle(True)
+        elif id == active_id:
+            on_idle(False)
+
+    interface.connect_to_signal('WatchFired', on_watch_fired)
+
+def set_power_save_mode(bus, mode):
+    object = bus.get_object('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig')
+    object.Set('org.gnome.Mutter.DisplayConfig', 'PowerSaveMode', mode, dbus_interface='org.freedesktop.DBus.Properties'),
+
+def stop_waydroid():
+    process = subprocess.run('lxc-info -Hs -P /var/lib/waydroid/lxc -n waydroid', capture_output=True, encoding='utf8', shell=True)
+    if process.stdout != 'STOPPED\n':
+        subprocess.run('waydroid session stop', shell=True)
+
+def run_main_loop():
+    loop = GLib.MainLoop()
+    loop.run()
+
+def main():
+    bus = get_session_bus()
+    add_idle_monitor(bus, timeout=3 * minute, on_idle=lambda idle: set_power_save_mode(bus, 1 if idle else 0))
+    add_idle_monitor(bus, timeout=30 * minute, on_idle=lambda idle: idle and stop_waydroid())
+
+    run_main_loop()
+
+if __name__ == '__main__':
+    main()

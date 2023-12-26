@@ -1,22 +1,20 @@
 #!/bin/bash
 set -eu
 
-input=$1
+path=$1
 action=$2
 shift 2
 
-install-packages ffmpeg
-
-copy=${input%.*}~.${input##*.}
+copy=${path%.*}~.${path##*.}
 
 if [[ $action == concat ]]; then
   paths=("$@")
 
-  path=$XDG_RUNTIME_DIR/ffmpeg-input
-  printf 'file %q\n' "$input" "${paths[@]}" > "$path"
+  input=$XDG_RUNTIME_DIR/ffmpeg-input
+  printf 'file %q\n' "$path" "${paths[@]}" > "$input"
 
-  ffmpeg -f concat -safe 0 -i "$path" -c copy "$copy"
-  rm "$path"
+  ffmpeg -f concat -safe 0 -i "$input" -c copy "$copy"
+  rm "$input"
 
   for path in "${paths[@]}"; do
     target=${path%/*}/.${path##*/}
@@ -26,16 +24,16 @@ elif [[ $action == cut ]]; then
   start=$1
   end=$2
 
-  ffmpeg -i "$input" -c copy -ss "$start" ${end:+-to "$end"} "$copy"
+  ffmpeg -i "$path" -c copy -ss "$start" ${end:+-to "$end"} "$copy"
 elif [[ $action == rotate ]]; then
   angle=$1
 
-  ffmpeg -i "$input" -c copy -metadata:s:v rotate="$angle" "$copy"
+  ffmpeg -i "$path" -c copy -metadata:s:v rotate="$angle" "$copy"
 else
   exit 1
 fi
 
-backup=${input%/*}/.${input##*/}
-mv "$input" "$backup"
+backup=${path%/*}/.${path##*/}
+mv "$path" "$backup"
 
-mv "$copy" "$input"
+mv "$copy" "$path"

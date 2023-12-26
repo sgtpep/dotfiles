@@ -1,4 +1,4 @@
-alias copy='xsel -b'
+alias copy='wl-copy'
 alias cp='cp -i'
 alias dd='dd bs=4M oflag=sync status=progress'
 alias df='df -h'
@@ -25,7 +25,7 @@ function pass {
 }
 
 function pwdhash {
-  command pwdhash "$@" | xsel -b
+  command pwdhash "$@" | copy
 }
 
 function rg {

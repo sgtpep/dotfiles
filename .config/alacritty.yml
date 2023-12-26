@@ -35,10 +35,8 @@ selection:
   save_to_clipboard: true
 shell:
   program: /bin/bash
-  args: [-l, -c, exec tmux]
+  args: [-l, -c, exec tmux new-session -A -s 0]
 window:
-  class:
-    general: org.gnome.Terminal
   decorations: None
   dimensions:
     columns: 125

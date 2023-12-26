@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Exec=chromium-browser %U
+Name=Browser
+Icon=browser
+StartupWMClass=Chromium-browser

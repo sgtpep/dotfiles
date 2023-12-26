@@ -8,7 +8,7 @@ url=$(sed 's/^\s\+\|\s\+$//g' <<< "$input")
 
 user_agent='Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0'
 title=$(
-  wget -q -O - -U "$user_agent" --header='Accept-Encoding: gzip' --no-check-certificate "$url" | \
+  curl -ks -A "$user_agent" -H 'Accept-Encoding: gzip' "$url" | \
   gunzip -f | \
   grep -Pio -m 1 '[^>]*(?=</title>)' | \
   tr '\0' ' ' | \

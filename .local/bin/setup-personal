@@ -23,7 +23,7 @@ function setup-user {
   ! ssh personal "[[ -d $directory ]]" || return 0
 
   local timezone=$(readlink /etc/localtime | sed 's|^/usr/share/zoneinfo/||')
-  local user=danil
+  local user=$(ssh personal 'echo "$USER"')
   local password=$(sudo grep -Po "(?<=^$user:)[^:]+" /etc/shadow)
 
   ssh root@personal "$SHELL" -"$-" << EOF
@@ -66,7 +66,7 @@ function upgrade-system {
 }
 
 function install-packages {
-  local packages=(
+  local names=(
     aria2
     bsd-mailx
     certbot
@@ -81,24 +81,24 @@ function install-packages {
     ufw
     unattended-upgrades
   )
-  dpkg -s "${packages[@]}" &> /dev/null || sudo apt -y install "${packages[@]}"
+  dpkg -s "${names[@]}" &> /dev/null || sudo apt -y install "${names[@]}"
 }
 
-function add-notes-key {
-  local line='command="git-shell -c \"$SSH_ORIGINAL_COMMAND\"" ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDl6Kwgr7jj0ZchaHfAj1PUgkgVKQTuPoTnw0tQ9ef2mQv2fKDCW2ZCA3LM5/cIuMupgJWd35RnP6i6oI58IYEC+wNcf8Fa3GvMg4woUVWqalf8fo7SFJMA7NhbEjT0W7ui05I2nR5+FYMtelIQRioTs4NuRu7xZP8UcCAT0r9D6VQtcB3CPhA2HHokvdypcTFd/Nt8k1Sh02XsQSVsgBydZ5nKfFLBqpS5GEFjwTXgjQVpntyMmG0W/+f7GllpANnlgBIBWwaCPJcaWKmPPHFGY3uZJ4HGiQsG/fVEdqjjlEsfRQPkWZwEmK6SknVgFGgKf3HXZWVSRg5T1JRAwvSYb4pP22tnrp74Dc3TG6JSAjVAvRL/FusReswKy5Qj08FbqGqNEI/o6C/UW/ZOGSNeAkQt4iEj+Ianzkb0202ywxbkOEqLyk4wWxx0jCWSyRhiZWQvBaZTG1UA4pu4IQP8Kascrswij5v5NlkizgtlpWR/YxpiX9tiIXQp3JPTfYk= notes'
-  local path=~/.ssh/authorized_keys
-  grep -Fqx "$line" "$path" || echo "$line" >> "$path"
+function symlink-netrc {
+  local path=~/.netrc
+  local target=/etc/${path#~/.}
+  sudo ln -fs "$path" "$target"
+
+  echo "$target"
 }
 
 function configure-msmtp {
   local aliases=/etc/aliases
   sudo tee "$aliases" > /dev/null <<< "default: $email"
 
-  local netrc=~/.netrc
-  local filename=${netrc#~/.}
-  sudo ln -fs "$netrc" /etc/"$filename"
+  local path=$(symlink-netrc)
+  local host=$(grep -Po '(?<=\bmachine\s)\s*mail\.[^\s]+' "$path")
 
-  local host=$(grep -Po '(?<=\bmachine\s)\s*mail\.[^\s]+' "$netrc")
   sudo tee /etc/msmtprc > /dev/null << EOF
 account default
   aliases $aliases
@@ -110,8 +110,6 @@ account default
   tls_trust_file /etc/ssl/certs/ca-certificates.crt
   user $email
 EOF
-
-  sudo tee /etc/cron.d/dead-letter > /dev/null <<< '0 * * * * '"$USER"' path=~/dead.letter && [ -f "$path" ] && mail -s "${path##*/}" "$LOGNAME" < "$path" && rm "$path"'
 }
 
 function configure-ufw {
@@ -130,11 +128,15 @@ function configure-unattended-upgrades {
   sudo sed -i 's/^\/*\(Unattended-Upgrade::Automatic-Reboot "\)[^"]*/\1true/' /etc/apt/apt.conf.d/50unattended-upgrades
 }
 
+function schedule-dead-letter {
+  sudo tee /etc/cron.d/dead-letter > /dev/null <<< '0 * * * * '"$USER"' path=~/dead.letter && [ -f "$path" ] && mail -s "${path##*/}" "$LOGNAME" < "$path" && rm "$path"'
+}
+
 function schedule-rss2email {
-  local command=r2e
-  sudo tee /etc/cron.d/"$command" > /dev/null << EOF
-0 */3 * * * $USER $command run > /dev/null 2>&1
-0 1 * * 0 $USER $command run 2>&1 | grep -v '^sax parsing error:'
+  local name=r2e
+  sudo tee /etc/cron.d/"$name" > /dev/null << EOF
+0 */3 * * * $USER $name run > /dev/null 2>&1
+0 1 * * 0 $USER $name run 2>&1 | grep -v '^sax parsing error:'
 EOF
 }
 
@@ -153,13 +155,13 @@ function download-dotfile {
 }
 
 function setup-gallery {
-  local command=generate-gallery
-  download-dotfile .local/bin/"$command"
+  local name=generate-gallery
+  download-dotfile .local/bin/"$name"
 
-  sudo tee /etc/cron.d/"$command" > /dev/null << EOF
+  sudo tee /etc/cron.d/"$name" > /dev/null << EOF
 PATH=/usr/bin:/bin:$HOME/.local/bin
-0 0 */5 * * $USER $command ~/.config/gallery/config ~/www/gallery
-0 0 */5 * * $USER $command ~/.config/*-gallery/config ~/www/*-gallery
+0 0 */5 * * $USER $name ~/.config/gallery/config ~/www/gallery
+0 0 */5 * * $USER $name ~/.config/*-gallery/config ~/www/*-gallery
 EOF
 }
 
@@ -224,23 +226,23 @@ function setup-nginx {
 }
 
 function setup-tasks {
-  local command=tasks
-  download-dotfile .local/bin/"$command"
+  local name=tasks
+  download-dotfile .local/bin/"$name"
 
   local mail='mail -E -a "Date: $(date -R)" -s'
-  sudo tee /etc/cron.d/"$command" > /dev/null << EOF
+  sudo tee /etc/cron.d/"$name" > /dev/null << EOF
 PATH=/usr/bin:/bin:$HOME/.local/bin
-0 5 * * * $USER $command today | $mail Today "\$LOGNAME"
-0 5 * * * $USER $command tomorrow | $mail Tomorrow "\$LOGNAME"
-0 5 * * 0 $USER $command | $mail Week "\$LOGNAME"
+0 5 * * * $USER $name today | $mail Today "\$LOGNAME"
+0 5 * * * $USER $name tomorrow | $mail Tomorrow "\$LOGNAME"
+0 5 * * 0 $USER $name | $mail Week "\$LOGNAME"
 EOF
 }
 
 function setup-system {
-  add-notes-key
   configure-msmtp
   configure-ufw
   configure-unattended-upgrades
+  schedule-dead-letter
   schedule-rss2email
   setup-gallery
   setup-nginx

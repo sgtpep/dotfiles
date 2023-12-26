@@ -2,8 +2,10 @@
 set -eu
 
 function lowercase-extensions {
+  local paths=("$@")
+
   local path
-  for path; do
+  for path in "${paths[@]}"; do
     [[ -f $path ]] || continue
 
     local extension=${path##*.}
@@ -15,8 +17,10 @@ function lowercase-extensions {
 }
 
 function normalize-extensions {
+  local paths=("$@")
+
   local path
-  for path; do
+  for path in "${paths[@]}"; do
     [[ -f $path ]] || continue
 
     local basename=${path%.*}
@@ -29,8 +33,10 @@ function rename-dated {
 }
 
 function rename-kids-camera {
+  local paths=("$@")
+
   local path
-  for path; do
+  for path in "${paths[@]}"; do
     [[ -f $path && $path =~ /[A-Z]{3}A[0-9]{4}.*\.[^.]+$ ]] || continue
 
     local datetime=$(stat -c %y "$path")
@@ -43,12 +49,17 @@ function rename-kids-camera {
 }
 
 function rename-nokia {
+  local paths=("$@")
+
   local path
-  for path; do
+  for path in "${paths[@]}"; do
     [[ -f $path && $path =~ /[^-]+_([[:digit:]]{4})([[:digit:]]{2})([[:digit:]]{2})_([[:digit:]]{2})([[:digit:]]{2})([[:digit:]]{2}).*\.[^.]+$ ]] || continue
 
+    local directory=${path%/*}
+    local basename=${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}-${BASH_REMATCH[4]}-${BASH_REMATCH[5]}-${BASH_REMATCH[6]}
+    local extension=${path##*.}
     local destination
-    for destination in "${path%/*}"/"${BASH_REMATCH[1]}"-"${BASH_REMATCH[2]}"-"${BASH_REMATCH[3]}"-"${BASH_REMATCH[4]}"-"${BASH_REMATCH[5]}"-"${BASH_REMATCH[6]}"{,_{1..1000}}."${path##*.}"; do
+    for destination in "$directory"/"$basename"{,_{1..1000}}."$extension"; do
       [[ ! -f $destination ]] || continue
 
       mv "$path" "$destination"
@@ -58,14 +69,12 @@ function rename-nokia {
 }
 
 function main {
-  [[ $@ ]] || set -- .
+  local paths=("${@-.}")
 
   . rename-window
 
-  install-packages perl-Image-ExifTool
-
   local path
-  for path; do
+  for path in "${paths[@]}"; do
     [[ -d $path ]]
 
     local directory=${path%/}

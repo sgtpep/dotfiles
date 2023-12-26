@@ -8,6 +8,16 @@ function s:configure_filetypes()
   autocmd FileType mail setlocal formatoptions+=w textwidth=72
 endfunction
 
+function s:configure_gui()
+  if !has("gui_running")
+    return
+  endif
+
+  set columns=1000 lines=1000
+  set guioptions-=T
+  set guioptions-=m
+endfunction
+
 function s:disable_colors()
   set t_Co=0
   syntax off
@@ -170,26 +180,25 @@ function s:format_code()
   update
 
   let path = 'node_modules/.bin/prettier'
-  let executable = executable(path) ? path : 'npx prettier'
+  let executable = executable(path) ? path : 'NPM_CONFIG_UPDATE_NOTIFIER=false npx --loglevel=error prettier'
   let [line, column] = [line('.'), col('.')]
   let offset = abs(line2byte(line)) + column - 2
   let path = expand('%')
-  let command = printf('NODE_NO_WARNINGS=1 %s --cursor-offset=%d --stdin-filepath=%s', executable, offset, shellescape(path))
+  let command = printf('NODE_NO_WARNINGS=1 %s --cursor-offset=%d --ignore-path= --stdin-filepath=%s', executable, offset, shellescape(path))
   let input = getline(1, '$')
   let output = systemlist(command, input)
-  let lines = filter(output, {index, line -> index > 0 || line !~# '^\(\[warn\] \|npx: installed\)'})
 
   if v:shell_error
-    echo join(lines, "\n")
-    echo get(lines, 0, '')
+    echo join(output, "\n")
+    echo get(output, 0, '')
 
-    let line = get(lines, 0, '')
+    let line = get(output, 0, '')
     let match = matchlist(line, '(\(\d\+\):\(\d\+\))$')
     if len(match)
       call cursor(match[1], match[2])
     endif
   else
-    let [offset, lines] = [lines[-1], lines[:-2]]
+    let [lines, offset] = output != input ? [output[:-2], output[-1]] : [output, offset]
     if lines !=# input
       let view = winsaveview()
 
@@ -253,7 +262,7 @@ function s:map_keys()
   nnoremap <silent> <Leader>n :cnext<CR>
   nnoremap <silent> <Leader>p :cprevious<CR>
   nnoremap <silent> <Leader>r :call <SID>format_code()<CR>
-  nnoremap <silent> <Leader>y :call system('xsel -bi', expand('%'))<CR>
+  nnoremap <silent> <Leader>y :call system('wl-copy', expand('%'))<CR>
   nnoremap Q <Nop>
   vnoremap <silent> <Leader>/ :call <SID>comment_code()<CR>
   vnoremap <silent> <Leader>s :sort<CR>
@@ -322,6 +331,7 @@ endfunction
 
 function s:main()
   call s:configure_filetypes()
+  call s:configure_gui()
   call s:disable_colors()
   call s:enable_views()
   call s:map_keys()

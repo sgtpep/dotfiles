@@ -13,17 +13,17 @@ set smartcase
 filetype <application/gzip,application/x-tar> tar -x -f %f
 filetype <application/zip> unzip -- %f
 fileviewer <audio/*,image/*,video/*> file -b -- %f
-filextype <*> xdg-open %f %i &
+filextype <*> gio open %f %i &
 
 nnoremap <silent> E :edit<CR>
 nnoremap <silent> gd :cd ~/Downloads<CR>
 nnoremap <silent> gh :cd ~<CR>
 nnoremap <silent> gm :cd /run/media/$USER<CR>
-nnoremap yn :!echo -n %f | xsel -b<CR>
-nnoremap yp :!echo -n %f:p | xsel -b<CR>
+nnoremap yn :!echo -n %f | wl-copy<CR>
+nnoremap yp :!echo -n %f:p | wl-copy<CR>
 nnoremap q ZQ
 
-autocmd DirEnter ~/Downloads setlocal sort=-mtime | normal gg
+autocmd DirEnter ~/Downloads setlocal sort=-mtime,dir | normal gg
 
 highlight Border cterm=none ctermfg=default ctermbg=default
 highlight BrokenLink cterm=none ctermfg=default ctermbg=default

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Exec=alacritty
+Name=Terminal
+Icon=terminal
+StartupWMClass=Alacritty

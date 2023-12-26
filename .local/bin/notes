@@ -22,7 +22,12 @@ function Sync()
     call Commit(paths)
   endif
 
-  let output = system('online git pull -r')
+  let command = 'git pull -r'
+  if executable('online')
+    let command = 'online ' . command
+  endif
+
+  let output = system(command)
   let status = v:shell_error
 
   if filereadable('.git/REBASE_HEAD')

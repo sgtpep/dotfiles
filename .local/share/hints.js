@@ -24,7 +24,6 @@ const elementVisible = (element) => {
 
 const clickElement = (element, newTab = false) => {
   const { target } = element;
-
   if (element.target === "_blank") {
     element.removeAttribute("target");
   }
@@ -69,9 +68,12 @@ const listenHintsEvents = (hints, labels) => {
       const [label = ""] = Object.keys(labels);
       if (input.length > label.length) {
         hideHints();
-      } else if (labels[input]) {
-        clickElement(labels[input], event.shiftKey);
-        hideHints();
+      } else {
+        const element = labels[input];
+        if (element) {
+          clickElement(element, event.shiftKey);
+          hideHints();
+        }
       }
     } else if (event.key !== "Shift") {
       hideHints();
@@ -88,10 +90,9 @@ const showHints = () => {
 
   const elements = queryElements();
   for (const [index, element] of Object.entries(elements)) {
-    const digits = [
-      ...index.toString().padStart(elements.length.toString().length, "0"),
-    ];
-    const label = digits.map((digit) => characters[digit]).join("");
+    const { length } = elements.length.toString();
+    const paddedIndex = index.toString().padStart(length, "0");
+    const label = paddedIndex.map((digit) => characters[digit]).join("");
 
     labels[label] = element;
 

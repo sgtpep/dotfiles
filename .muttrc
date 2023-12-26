@@ -1,10 +1,14 @@
 set `"$SHELL" -eu -c 'path=~/.cache/mutt; [[ -d $path ]] || mkdir -p "$path"; echo -n "header_cache=$path tmpdir=$path"; while IFS= read -r line; do pattern="\bmachine\s+(mail\..+)\s+login\s+(.+)\s+password\s+(.+)"; [[ $line =~ $pattern ]] || continue; hostname=${BASH_REMATCH[2]}:${BASH_REMATCH[3]}@${BASH_REMATCH[1]}; echo -n " from=${BASH_REMATCH[2]} folder=imaps://$hostname smtp_url=smtps://$hostname"; break; done < ~/.netrc'`
 
+set beep_new
+set fast_reply
+set forward_format=Fw:\ %s
+set from='Danil Semelenov <mail'@'danil.mobi>'
 set imap_idle
-set postponed==Drafts
-set record==Sent
-set spoolfile==Inbox
-mailboxes $spoolfile
+set include
+set mime_forward
+set pager_stop
+set rfc2047_parameters
 
 set mail_check=60
 set sleep_time=0
@@ -17,23 +21,20 @@ set noimap_passive
 set nomarkers
 set nowait_key
 
+set postponed==Drafts
+set record==Sent
+set spoolfile==Inbox
+
 set text_flowed
 set wrap=80
-
-set beep_new
-set fast_reply
-set forward_format=Fw:\ %s
-set from='Danil Semelenov <mail'@'danil.mobi>'
-set include
-set mime_forward
-set pager_stop
-set rfc2047_parameters
 
 alternative_order text/plain text/html
 auto_view text/html
 
 bind editor <Tab> complete-query
 set query_command='echo; sed -n '\''s/\(.*'\''%s'\''.*\) <\(.*\)>/\2\t\1/ip; s/\(.*\) <\(.*'\''%s'\''.*\)>/\2\t\1/ip'\'' ~/notes/emails'
+
+mailboxes $spoolfile
 
 macro attach s '<save-entry><kill-line>~/Downloads/<Return>y<Return>'
 macro index <Space>a '<change-folder>=Archive<Return>'
@@ -75,5 +76,6 @@ color status default default
 color tilde default default
 color tree default default
 color underline default default
+
 uncolor body *
 uncolor header *

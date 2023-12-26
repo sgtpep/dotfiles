@@ -1,0 +1,438 @@
+#!/bin/bash
+set -eu
+
+keys=/run/media/$USER/keys
+
+function enable-rpm-fusion {
+  [[ ! -f /etc/yum.repos.d/rpmfusion-free.repo ]] || return 0
+
+  local version=$(rpm -E %fedora)
+  sudo dnf -y install https://mirrors.rpmfusion.org/{free/fedora/rpmfusion-free,nonfree/fedora/rpmfusion-nonfree}-release-"$version".noarch.rpm
+}
+
+function install-packages {
+  local names=(
+    ImageMagick
+    alacritty
+    android-tools
+    bash
+    bash-completion
+    broadcom-wl
+    bzip2
+    calc
+    chromium
+    curl
+    cyrus-sasl-plain
+    dejavu-sans-mono-fonts
+    dnf-automatic
+    ffmpeg
+    gimp
+    git
+    gnome-disk-utility
+    gnome-shell
+    gnupg2
+    gvfs-mtp
+    gzip
+    htop
+    man-db
+    mutt
+    nautilus
+    ncdu
+    nodejs
+    openssh
+    pass
+    perl-Image-ExifTool
+    plymouth-theme-spinner
+    python3
+    python3-pip
+    rclone
+    ripgrep
+    rsync
+    sdcv
+    sqlite
+    sshuttle
+    sushi
+    tar
+    tmux
+    unzip
+    util-linux
+    vifm
+    vim-X11
+    w3m
+    waydroid
+    which
+    wl-clipboard
+    zip
+  )
+  rpm -q "${names[@]}" > /dev/null || sudo dnf -y install "${names[@]}"
+}
+
+function remove-packages {
+  local names=(openssh-server)
+  ! rpm -q "${names[@]}" > /dev/null || sudo dnf -y remove "${names[@]}"
+}
+
+function install-facetimehd {
+  local name=facetimehd
+  ! rpm -q "$name" > /dev/null || return 0
+
+  local path=/tmp/$name
+  mkdir -p "$path"
+  curl https://codeload.github.com/patjak/facetimehd-firmware/tar.gz/refs/heads/master | tar -xz -C "$path"
+
+  cd "$path"/*
+  sha256sum -c <<< '97a01f5e1100dac99b11c6d62dc30039362a7d89ba99a0305bcea19bab3f55ff Makefile'
+  make
+  sudo make install
+  cd -
+
+  sudo dnf -y copr enable frgt10/facetimehd-dkms
+  sudo dnf -y install facetimehd
+}
+
+function install-gnome-extensions {
+  declare -A extensions=(
+    [user-theme@gnome-shell-extensions.gcampax.github.com]=https://extensions.gnome.org/extension-data/user-themegnome-shell-extensions.gcampax.github.com.v54.shell-extension.zip
+  )
+
+  local uuid
+  for uuid in "${!extensions[@]}"; do
+    local url=${extensions[$uuid]}
+    [[ -d ~/.local/share/gnome-shell/extensions/$uuid ]] || gnome-extensions install "$url"
+  done
+}
+
+function install-google-chrome {
+  rpm -q google-chrome-stable > /dev/null || sudo dnf -y install https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+}
+
+function install-npm-completion {
+  local path=~/.local/share/bash-completion/completions/npm
+  [[ ! -f $path ]] || return 0
+
+  local directory=${path%/*}
+  mkdir -p "$directory"
+
+  PATH=~/.npm/bin:$PATH npm completion > "$path"
+}
+
+function install-pip-packages {
+  local names=(
+    magic_wormhole
+    pwdhash.py
+    yt_dlp
+  )
+
+  local name
+  for name in "${names[@]}"; do
+    local pip=~/.pip
+    local paths=("$pip"/lib/python*/site-packages/"$name"-*)
+    [[ -d ${paths[0]} ]] || PYTHONUSERBASE=$pip pip install --no-warn-script-location "$name"
+  done
+}
+
+function install-dependencies {
+  enable-rpm-fusion
+  install-packages
+  remove-packages
+
+  install-facetimehd
+  install-gnome-extensions
+  install-google-chrome
+  install-npm-completion
+  install-pip-packages
+}
+
+function configure-gdm {
+  sudo tee /etc/gdm/custom.conf > /dev/null << EOF
+[daemon]
+AutomaticLogin=$USER
+AutomaticLoginEnable=True
+EOF
+}
+
+function configure-grub {
+  local path=/etc/default/grub
+  local checksum=$(md5sum "$path")
+
+  sudo sed -i 's/^\(GRUB_TIMEOUT=\).*/\11/' "$path"
+
+  md5sum -c --status <<< "$checksum" || sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+}
+
+function disable-lid-wakeup {
+  local name=disable-lid-wakeup.service
+  sudo tee /etc/systemd/system/"$name" > /dev/null << \EOF
+[Service]
+Type=oneshot
+ExecStart=sh -c 'echo LID0 > /proc/acpi/wakeup'
+
+[Install]
+WantedBy=default.target
+EOF
+  [[ -h /etc/systemd/system/default.target.wants/$name ]] || sudo systemctl enable "$name"
+}
+
+function enable-dnf-automatic {
+  local name=dnf-automatic-install.timer
+  [[ -h /etc/systemd/system/timers.target.wants/$name ]] || sudo systemctl enable "$name"
+}
+
+function fix-adb-permissions {
+  sudo tee /etc/udev/rules.d/50-adb.rules > /dev/null <<< 'SUBSYSTEM=="usb", ATTR{idVendor}=="0e8d", MODE="0666", GROUP="plugdev"'
+}
+
+function fix-battery-state {
+  sudo tee /etc/udev/rules.d/50-power-supply.rules > /dev/null <<< $'SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_ONLINE}=="[01]", RUN+="/bin/sh -c \'sleep 3; systemctl restart upower\'"'
+}
+
+function set-graphical-target {
+  local name=graphical.target
+  local output=$(readlink /etc/systemd/system/default.target)
+  [[ $output == */$name ]] || sudo systemctl set-default "$name"
+}
+
+function set-gsettings {
+  local command=(gsettings set)
+
+  "${command[@]}" org.gnome.Settings window-state '(980, 640, true)'
+
+  "${command[@]}" org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/ apps '[]'
+  "${command[@]}" org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/ categories '[]'
+
+  "${command[@]}" org.gnome.desktop.background primary-color black
+
+  "${command[@]}" org.gnome.desktop.input-sources per-window true
+  "${command[@]}" org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('xkb', 'ru')]"
+  "${command[@]}" org.gnome.desktop.input-sources xkb-options "['altwin:swap_alt_win', 'caps:ctrl_modifier', 'grp:rshift_toggle', 'lv3:switch']"
+
+  "${command[@]}" org.gnome.desktop.interface cursor-blink false
+  "${command[@]}" org.gnome.desktop.interface enable-animations false
+
+  "${command[@]}" org.gnome.desktop.notifications show-in-lock-screen false
+
+  "${command[@]}" org.gnome.desktop.peripherals.touchpad tap-to-click true
+
+  "${command[@]}" org.gnome.desktop.privacy recent-files-max-age 30
+  "${command[@]}" org.gnome.desktop.privacy remove-old-temp-files true
+  "${command[@]}" org.gnome.desktop.privacy remove-old-trash-files true
+
+  "${command[@]}" org.gnome.desktop.screensaver lock-enabled false
+
+  "${command[@]}" org.gnome.desktop.search-providers disable-external true
+
+  "${command[@]}" org.gnome.desktop.session idle-delay 0
+
+  "${command[@]}" org.gnome.desktop.sound event-sounds false
+
+  "${command[@]}" org.gnome.desktop.wm.keybindings close "['<Alt><Control>q']"
+  "${command[@]}" org.gnome.desktop.wm.keybindings cycle-windows '[]'
+  "${command[@]}" org.gnome.desktop.wm.keybindings minimize "['<Alt>Escape']"
+  "${command[@]}" org.gnome.desktop.wm.keybindings panel-run-dialog "['<Alt><Control>r']"
+  "${command[@]}" org.gnome.desktop.wm.keybindings switch-applications '[]'
+  "${command[@]}" org.gnome.desktop.wm.keybindings switch-applications-backward '[]'
+  "${command[@]}" org.gnome.desktop.wm.keybindings switch-group '[]'
+  "${command[@]}" org.gnome.desktop.wm.keybindings switch-windows "['<Alt>Tab']"
+  "${command[@]}" org.gnome.desktop.wm.keybindings switch-windows-backward "['<Alt><Shift>Tab']"
+
+  "${command[@]}" org.gnome.desktop.wm.preferences num-workspaces 1
+
+  "${command[@]}" org.gnome.mutter center-new-windows true
+  "${command[@]}" org.gnome.mutter check-alive-timeout 0
+  "${command[@]}" org.gnome.mutter dynamic-workspaces false
+
+  "${command[@]}" org.gnome.nautilus.preferences default-folder-viewer list-view
+  "${command[@]}" org.gnome.nautilus.window-state maximized true
+
+  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-down-quiet-static "['XF86AudioLowerVolume']"
+  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-down-static "['']"
+  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-mute-quiet-static "['XF86AudioMute']"
+  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-mute-static "['']"
+  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-up-quiet-static "['XF86AudioRaiseVolume']"
+  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-up-static "['']"
+
+  "${command[@]}" org.gnome.settings-daemon.plugins.power ambient-enabled false
+  "${command[@]}" org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing
+  "${command[@]}" org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 300
+
+  "${command[@]}" org.gnome.shell enabled-extensions "['customizations', 'user-theme@gnome-shell-extensions.gcampax.github.com']"
+  "${command[@]}" org.gnome.shell favorite-apps "['Alacritty.desktop', 'chromium-browser.desktop']"
+  "${command[@]}" org.gnome.shell welcome-dialog-last-shown-version 100
+
+  "${command[0]}" --schemadir ~/.local/share/gnome-shell/extensions/user-theme@gnome-shell-extensions.gcampax.github.com/schemas "${command[@]:1}" org.gnome.shell.extensions.user-theme name customizations
+
+  "${command[@]}" org.gnome.shell.keybindings switch-to-application-1 "['<Alt><Ctrl>t']"
+  "${command[@]}" org.gnome.shell.keybindings switch-to-application-2 "['<Alt><Ctrl>w']"
+}
+
+function set-hostname {
+  local name=localhost
+  local content=$(< /etc/hostname)
+  [[ $content == $name ]] || sudo hostnamectl set-hostname "$name"
+}
+
+function set-plymouth-theme {
+  local name=spinner
+  sudo sed -i 's/^\(WatermarkHorizontalAlignment=\).*/\12/' /usr/share/plymouth/themes/"$name"/"$name".plymouth
+  grep -q "^Theme=$name$" /etc/plymouth/plymouthd.conf || sudo plymouth-set-default-theme -R "$name"
+}
+
+function setup-waydroid {
+  local url=https://ota.waydro.id
+  [[ -d /var/lib/waydroid/images ]] || sudo waydroid init -c "$url"/system -v "$url"/vendor
+
+  local line=qemu.hw.mainkeys=1
+  local path=/var/lib/waydroid/waydroid_base.prop
+  grep -Fqx "$line" "$path" || sudo tee -a "$path" > /dev/null <<< "$line"
+
+  local name
+  for name in waydroid.{com.android.{calculator2,camera2,contacts,deskclock,documentsui,gallery3d,inputmethod.latin,settings},org.lineageos.{eleven,etar,jelly,recorder}}; do
+    truncate -s 0 ~/.local/share/applications/"$name".desktop
+  done
+}
+
+function symlink-vim {
+  local path
+  for path in /usr/local/bin/vi{,m}; do
+    sudo ln -fs /usr/bin/vimx "$path"
+  done
+}
+
+function turn-off-bluetooth {
+  local name=bluetooth
+  rfkill -o TYPE,SOFT | grep -q "^$name\s*blocked$" || rfkill block "$name"
+}
+
+function configure-system {
+  configure-gdm
+  configure-grub
+  disable-lid-wakeup
+  enable-dnf-automatic
+  fix-adb-permissions
+  fix-battery-state
+  set-graphical-target
+  set-gsettings
+  set-hostname
+  set-plymouth-theme
+  setup-waydroid
+  symlink-vim
+  turn-off-bluetooth
+}
+
+function mount-key {
+  ! mountpoint -q "$keys" || return 0
+
+  local name=${keys##*/}
+  local path=$(readlink -f /dev/disk/by-label/"$name")
+  gio mount -d "$path"
+}
+
+function copy-ssh-key {
+  local path=~/.ssh/id_rsa
+  [[ ! -f $path ]] || return 0
+
+  local directory=${path%/*}
+  mkdir -p "$directory"
+
+  mount-key
+  local key=$keys/${path##*/}
+  cp "$key" "$path"
+  chmod 600 "$path"
+
+  until ssh-keygen -p -N '' -f "$path"; do
+    :
+  done
+}
+
+function clone-dotfiles {
+  local path=~/.git
+  [[ ! -d $path ]] || return 0
+
+  local directory=${path%/*}
+  local command=(git -C "$directory")
+
+  "${command[@]}" init
+  "${command[@]}" remote add origin git@github.com:sgtpep/dotfiles.git
+  "${command[@]}" fetch
+  "${command[@]}" checkout -f master
+
+  "${command[@]}" ls-files | grep -Po '.+(?=\.orig$)' | xargs -r -I {} -d '\n' cp ~/{}{.orig,}
+}
+
+function add-pass-hook {
+  local path=$1
+
+  local hook=$path/.git/hooks/post-commit
+  cat > "$hook" << \EOF
+#!/bin/bash
+set -eu
+
+git pull
+git push
+EOF
+  chmod +x "$hook"
+}
+
+function clone-repositories {
+  declare -A repositories=(
+    [notes]=notes
+    [pass]=.password-store
+  )
+
+  local name
+  for name in "${!repositories[@]}"; do
+    local path=~/${repositories[$name]}
+    [[ ! -d $path ]] || continue
+
+    git clone personal:repositories/"$name".git "$path"
+  done
+
+  local path=~/${repositories[pass]}
+  add-pass-hook "$path"
+}
+
+function copy-netrc {
+  local path=~/.netrc
+  local relative_path=${path#~/}
+  [[ -f $path ]] || scp personal:"$relative_path" "$path"
+}
+
+function create-npm-lib {
+  mkdir -p ~/.npm/lib
+}
+
+function download-dictionaries {
+  local path=~/.stardict/dic
+  ! ls "$path"/* &> /dev/null || return 0
+
+  mkdir -p "$path"
+  ssh personal cat archive/dictionaries.tar.gz | tar -xz -C "$path"
+}
+
+function import-gpg-key {
+  ! ls ~/.gnupg/private-keys-v1.d/*.key &> /dev/null || return 0
+
+  mount-key
+  gpg --import "$keys"/private-key.asc
+
+  local output="$(gpg -k --with-colons | grep -Po -m 1 '(?<=^fpr:::::::::)[^:]+'):6:"
+  gpg --import-ownertrust <<< "$output"
+}
+
+function setup-home {
+  clone-repositories
+  copy-netrc
+  create-npm-lib
+  download-dictionaries
+  import-gpg-key
+}
+
+function main {
+  install-dependencies
+  configure-system
+  copy-ssh-key
+  clone-dotfiles
+  setup-home
+}
+
+[[ ${BASH_SOURCE[0]} != $0 ]] || main "$@"

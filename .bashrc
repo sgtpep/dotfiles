@@ -3,15 +3,17 @@
 . ~/.bash_aliases
 . ~/.bash_bindings
 
-((COLUMNS > 80)) || unset MANWIDTH
 GIT_PS1_SHOWDIRTYSTATE=true
 GIT_PS1_SHOWSTASHSTATE=true
 GIT_PS1_SHOWUNTRACKEDFILES=true
 GIT_PS1_SHOWUPSTREAM=auto
+
 HISTCONTROL=ignoreboth
 HISTFILESIZE=-1
 HISTIGNORE='git restore*:git stash drop*:y'
 HISTSIZE=10000
+
+((COLUMNS > 80)) || unset MANWIDTH
 
 PROMPT_COMMAND='
 : "$?"
@@ -30,4 +32,5 @@ PS1=$'$(
 
 shopt -s autocd
 shopt -s histappend
+
 stty -ixon

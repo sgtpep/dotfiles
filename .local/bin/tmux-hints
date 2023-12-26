@@ -43,13 +43,14 @@ function generate-label {
 function hintify-text {
   local text=$1
   shift
+  local positions=("$@")
 
-  local position
   local start=$'\e[7m'
   local end=$'\e[m'
   local index=0
   local count=$#
-  for position; do
+  local position
+  for position in "${positions[@]}"; do
     local offset=$((position + index * (${#start} + ${#end})))
     local label=$(generate-label "$index" "$count")
     text=${text::offset}$start$label$end${text:offset + ${#label}}
@@ -144,7 +145,7 @@ function open-url {
     return
   fi
 
-  setsid xdg-open "$url" &> /dev/null &
+  setsid gio open "$url" &> /dev/null &
   sleep 0.1
 }
 

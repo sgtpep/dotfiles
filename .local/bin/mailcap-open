@@ -15,5 +15,5 @@ fi
 
 mv "$path" "$destination"
 
-setsid xdg-open "$destination" &> /dev/null &
+setsid gio open "$destination" &> /dev/null &
 sleep 0.1

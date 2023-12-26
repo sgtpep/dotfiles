@@ -15,6 +15,7 @@ else
 
   mkdir -p "$path"
   rclone mount --daemon s3:"$bucket" "$path"
+
   until mountpoint -q "$path"; do
     sleep 1
   done
@@ -23,6 +24,7 @@ fi
 vifm "$path" || :
 
 [[ ! -v mounted ]] || exit
+
 until fusermount -u "$path"; do
   sleep 1
 done

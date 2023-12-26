@@ -1,5 +1,6 @@
-if [[ -v TMUX ]]; then
-  name=${0##*/}
-  tmux rename-window "$name"
-  trap 'tmux set-option automatic-rename on' EXIT
-fi
+[[ -v TMUX ]] || return 0
+
+name=${0##*/}
+tmux rename-window "$name"
+
+trap 'tmux set-option automatic-rename on' EXIT
