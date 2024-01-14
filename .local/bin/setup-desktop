@@ -242,7 +242,7 @@ function set-gsettings {
   "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-up-static "['']"
 
   "${command[@]}" org.gnome.settings-daemon.plugins.power ambient-enabled false
-  "${command[@]}" org.gnome.settings-daemon.plugins.power idle-brightness 0
+  "${command[@]}" org.gnome.settings-daemon.plugins.power idle-dim false
   "${command[@]}" org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing
   "${command[@]}" org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 300
 
