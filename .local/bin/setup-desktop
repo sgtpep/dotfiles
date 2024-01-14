@@ -13,7 +13,7 @@ function enable-rpm-fusion {
 function install-packages {
   local names=(
     ImageMagick
-    alacritty
+    alacritty-0.12.2
     android-tools
     bash
     bash-completion
