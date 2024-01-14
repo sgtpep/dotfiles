@@ -21,15 +21,18 @@ function install-packages {
     bzip2
     calc
     chromium
+    cups
     curl
     cyrus-sasl-plain
     dejavu-sans-mono-fonts
     dnf-automatic
+    eog
     ffmpeg
     gimp
     git
     gnome-disk-utility
     gnome-shell
+    gnome-shell-extension-user-theme
     gnupg2
     gvfs-mtp
     gzip
@@ -49,6 +52,7 @@ function install-packages {
     ripgrep
     rsync
     sdcv
+    simple-scan
     sqlite
     sshuttle
     sushi
@@ -90,18 +94,6 @@ function install-facetimehd {
   sudo dnf -y install facetimehd
 }
 
-function install-gnome-extensions {
-  declare -A extensions=(
-    [user-theme@gnome-shell-extensions.gcampax.github.com]=https://extensions.gnome.org/extension-data/user-themegnome-shell-extensions.gcampax.github.com.v54.shell-extension.zip
-  )
-
-  local uuid
-  for uuid in "${!extensions[@]}"; do
-    local url=${extensions[$uuid]}
-    [[ -d ~/.local/share/gnome-shell/extensions/$uuid ]] || gnome-extensions install "$url"
-  done
-}
-
 function install-google-chrome {
   rpm -q google-chrome-stable > /dev/null || sudo dnf -y install https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
 }
@@ -137,7 +129,6 @@ function install-dependencies {
   remove-packages
 
   install-facetimehd
-  install-gnome-extensions
   install-google-chrome
   install-npm-completion
   install-pip-packages
@@ -197,8 +188,7 @@ function set-gsettings {
 
   "${command[@]}" org.gnome.Settings window-state '(980, 640, true)'
 
-  "${command[@]}" org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/ apps '[]'
-  "${command[@]}" org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/ categories '[]'
+  "${command[@]}" org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/ excluded-apps "['org.gnome.DiskUtility.desktop']"
 
   "${command[@]}" org.gnome.desktop.background primary-color black
 
@@ -252,6 +242,7 @@ function set-gsettings {
   "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-up-static "['']"
 
   "${command[@]}" org.gnome.settings-daemon.plugins.power ambient-enabled false
+  "${command[@]}" org.gnome.settings-daemon.plugins.power idle-brightness 0
   "${command[@]}" org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing
   "${command[@]}" org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 300
 
@@ -259,7 +250,7 @@ function set-gsettings {
   "${command[@]}" org.gnome.shell favorite-apps "['Alacritty.desktop', 'chromium-browser.desktop']"
   "${command[@]}" org.gnome.shell welcome-dialog-last-shown-version 100
 
-  "${command[0]}" --schemadir ~/.local/share/gnome-shell/extensions/user-theme@gnome-shell-extensions.gcampax.github.com/schemas "${command[@]:1}" org.gnome.shell.extensions.user-theme name customizations
+  "${command[@]}" org.gnome.shell.extensions.user-theme name customizations
 
   "${command[@]}" org.gnome.shell.keybindings switch-to-application-1 "['<Alt><Ctrl>t']"
   "${command[@]}" org.gnome.shell.keybindings switch-to-application-2 "['<Alt><Ctrl>w']"
@@ -279,16 +270,11 @@ function set-plymouth-theme {
 
 function setup-waydroid {
   local url=https://ota.waydro.id
-  [[ -d /var/lib/waydroid/images ]] || sudo waydroid init -c "$url"/system -v "$url"/vendor
+  ls /var/lib/waydroid/images/{system,vendor}.img &> /dev/null || sudo waydroid init -c "$url"/system -v "$url"/vendor
 
   local line=qemu.hw.mainkeys=1
   local path=/var/lib/waydroid/waydroid_base.prop
   grep -Fqx "$line" "$path" || sudo tee -a "$path" > /dev/null <<< "$line"
-
-  local name
-  for name in waydroid.{com.android.{calculator2,camera2,contacts,deskclock,documentsui,gallery3d,inputmethod.latin,settings},org.lineageos.{eleven,etar,jelly,recorder}}; do
-    truncate -s 0 ~/.local/share/applications/"$name".desktop
-  done
 }
 
 function symlink-vim {
@@ -352,11 +338,13 @@ function clone-dotfiles {
   local command=(git -C "$directory")
 
   "${command[@]}" init
-  "${command[@]}" remote add origin git@github.com:sgtpep/dotfiles.git
+  "${command[@]}" remote add origin https://github.com/sgtpep/dotfiles.git
   "${command[@]}" fetch
   "${command[@]}" checkout -f master
 
   "${command[@]}" ls-files | grep -Po '.+(?=\.orig$)' | xargs -r -I {} -d '\n' cp ~/{}{.orig,}
+
+  sed -i 's|\bhttps://\([^/]*\)/|git@\1:|' ~/.git/config
 }
 
 function add-pass-hook {
@@ -409,14 +397,27 @@ function download-dictionaries {
   ssh personal cat archive/dictionaries.tar.gz | tar -xz -C "$path"
 }
 
+function hide-waydroid-icons {
+  local path=~/.local/share/applications
+  mkdir -p "$path"
+
+  local name
+  for name in waydroid.{com.android.{calculator2,camera2,contacts,deskclock,documentsui,gallery3d,inputmethod.latin,settings},org.lineageos.{eleven,etar,jelly,recorder}}; do
+    truncate -s 0 "$path"/"$name".desktop
+  done
+}
+
 function import-gpg-key {
-  ! ls ~/.gnupg/private-keys-v1.d/*.key &> /dev/null || return 0
+  local path=~/.gnupg
+  ! ls "$path"/private-keys-v1.d/*.key &> /dev/null || return 0
 
   mount-key
   gpg --import "$keys"/private-key.asc
 
   local output="$(gpg -k --with-colons | grep -Po -m 1 '(?<=^fpr:::::::::)[^:]+'):6:"
   gpg --import-ownertrust <<< "$output"
+
+  chmod 700 "$path"
 }
 
 function setup-home {
@@ -424,6 +425,7 @@ function setup-home {
   copy-netrc
   create-npm-lib
   download-dictionaries
+  hide-waydroid-icons
   import-gpg-key
 }
 
