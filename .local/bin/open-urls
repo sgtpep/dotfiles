@@ -1,0 +1,38 @@
+#!/bin/bash
+set -eu
+
+if [[ ${FLOCK-} != $0 ]]; then
+  path=/tmp/${0##*/}
+  FLOCK=$0 exec flock "$path" "$SHELL" -"$-" "$0" "$@"
+fi
+
+command=(chromium-browser)
+
+function write-file {
+  local path=$1
+
+  local copy=$path~
+  cat > "$copy"
+  mv "$copy" "$path"
+}
+
+path=~/.urls
+while [[ -s $path ]]; do
+  limit=10
+  delay=15
+
+  uniq "$path" | write-file "$path"
+
+  urls=$(head -n "$limit" "$path")
+
+  setsid xargs -r -d '\n' "${command[@]}" <<< "$urls" &> /dev/null &
+  sleep 0.1
+
+  log=$path.log
+  echo "$urls" >> "$log"
+  tail -n 100 "$log" | write-file "$log"
+
+  sed -i "1,${limit}d" "$path"
+
+  [[ ! -s $path ]] || sleep "$delay"
+done
