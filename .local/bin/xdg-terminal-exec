@@ -2,4 +2,4 @@
 set -eu
 
 title=$1
-exec alacritty -T "$title" -e "$@"
+exec gnome-terminal -t "$title" -- "$@"

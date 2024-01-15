@@ -4,8 +4,6 @@ import {
   sessionMode,
 } from "resource:///org/gnome/shell/ui/main.js";
 
-const { Meta } = imports.gi;
-
 export default class {
   enable() {
     const hasOverview = sessionMode.hasOverview;
@@ -19,5 +17,10 @@ export default class {
       signalId: "window-demands-attention",
     });
     GObject.signal_handler_block(global.display, windowDemandsAttention);
+
+    Object.defineProperty(layoutManager.primaryMonitor, "inFullscreen", {
+      configurable: true,
+      value: false,
+    });
   }
 }

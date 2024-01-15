@@ -13,7 +13,6 @@ function enable-rpm-fusion {
 function install-packages {
   local names=(
     ImageMagick
-    alacritty
     android-tools
     bash
     bash-completion
@@ -33,7 +32,9 @@ function install-packages {
     gnome-disk-utility
     gnome-shell
     gnome-shell-extension-user-theme
+    gnome-terminal
     gnupg2
+    gpaste
     gvfs-mtp
     gzip
     htop
@@ -184,74 +185,126 @@ function set-graphical-target {
 }
 
 function set-gsettings {
-  local command=(gsettings set)
+  local base_command=(gsettings set)
 
-  "${command[@]}" org.gnome.Settings window-state '(980, 640, true)'
+  local command=("${base_command[@]}" org.gnome.GPaste)
+  "${command[@]}" save-history false
+  "${command[@]}" synchronize-clipboards true
+  "${command[@]}" track-changes false
 
-  "${command[@]}" org.gnome.desktop.background primary-color black
+  local command=("${base_command[@]}" org.gnome.Settings)
+  "${command[@]}" window-state '(980, 640, true)'
 
-  "${command[@]}" org.gnome.desktop.input-sources per-window true
-  "${command[@]}" org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('xkb', 'ru')]"
-  "${command[@]}" org.gnome.desktop.input-sources xkb-options "['altwin:swap_alt_win', 'caps:ctrl_modifier', 'grp:rshift_toggle', 'lv3:switch']"
+  local command=("${base_command[@]}" org.gnome.Terminal.Legacy.Keybindings:/org/gnome/terminal/legacy/keybindings/)
+  "${command[@]}" paste '<Alt><Control>v'
+  "${command[@]}" zoom-in '<Control>equal'
+  local number
+  for number in {1..10}; do
+    "${command[@]}" switch-to-tab-"$number" disabled
+  done
 
-  "${command[@]}" org.gnome.desktop.interface cursor-blink false
-  "${command[@]}" org.gnome.desktop.interface enable-animations false
+  local command=("${base_command[@]}" org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/)
+  "${command[@]}" background-color 'White'
+  "${command[@]}" cell-height-scale 1.05
+  "${command[@]}" custom-command "bash -l -c 'exec tmux'"
+  "${command[@]}" font 'DejaVu Sans Mono 14'
+  "${command[@]}" foreground-color 'Black'
+  "${command[@]}" palette "['White', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black']"
+  "${command[@]}" scrollback-lines 0
+  "${command[@]}" scrollbar-policy never
+  "${command[@]}" use-custom-command true
+  "${command[@]}" use-system-font false
+  "${command[@]}" use-theme-colors false
 
-  "${command[@]}" org.gnome.desktop.notifications show-in-lock-screen false
+  local command=("${base_command[@]}" org.gnome.Terminal.Legacy.Settings)
+  "${command[@]}" confirm-close false
+  "${command[@]}" menu-accelerator-enabled false
 
-  "${command[@]}" org.gnome.desktop.peripherals.touchpad tap-to-click true
+  local command=("${base_command[@]}" org.gnome.desktop.background)
+  "${command[@]}" primary-color black
 
-  "${command[@]}" org.gnome.desktop.privacy recent-files-max-age 30
-  "${command[@]}" org.gnome.desktop.privacy remove-old-temp-files true
-  "${command[@]}" org.gnome.desktop.privacy remove-old-trash-files true
+  local command=("${base_command[@]}" org.gnome.desktop.input-sources)
+  "${command[@]}" per-window true
+  "${command[@]}" sources "[('xkb', 'us'), ('xkb', 'ru')]"
+  "${command[@]}" xkb-options "['altwin:swap_alt_win', 'caps:ctrl_modifier', 'grp:rshift_toggle', 'lv3:switch']"
 
-  "${command[@]}" org.gnome.desktop.screensaver lock-enabled false
+  local command=("${base_command[@]}" org.gnome.desktop.interface)
+  "${command[@]}" cursor-blink false
+  "${command[@]}" enable-animations false
 
-  "${command[@]}" org.gnome.desktop.search-providers disable-external true
+  local command=("${base_command[@]}" org.gnome.desktop.notifications)
+  "${command[@]}" show-in-lock-screen false
 
-  "${command[@]}" org.gnome.desktop.session idle-delay 0
+  local command=("${base_command[@]}" org.gnome.desktop.peripherals.touchpad)
+  "${command[@]}" tap-to-click true
 
-  "${command[@]}" org.gnome.desktop.sound event-sounds false
+  local command=("${base_command[@]}" org.gnome.desktop.privacy)
+  "${command[@]}" recent-files-max-age 30
+  "${command[@]}" remove-old-temp-files true
+  "${command[@]}" remove-old-trash-files true
 
-  "${command[@]}" org.gnome.desktop.wm.keybindings close "['<Alt><Control>q']"
-  "${command[@]}" org.gnome.desktop.wm.keybindings cycle-windows '[]'
-  "${command[@]}" org.gnome.desktop.wm.keybindings minimize "['<Alt>Escape']"
-  "${command[@]}" org.gnome.desktop.wm.keybindings panel-run-dialog "['<Alt><Control>r']"
-  "${command[@]}" org.gnome.desktop.wm.keybindings switch-applications '[]'
-  "${command[@]}" org.gnome.desktop.wm.keybindings switch-applications-backward '[]'
-  "${command[@]}" org.gnome.desktop.wm.keybindings switch-group '[]'
-  "${command[@]}" org.gnome.desktop.wm.keybindings switch-windows "['<Alt>Tab']"
-  "${command[@]}" org.gnome.desktop.wm.keybindings switch-windows-backward "['<Alt><Shift>Tab']"
+  local command=("${base_command[@]}" org.gnome.desktop.screensaver)
+  "${command[@]}" lock-enabled false
 
-  "${command[@]}" org.gnome.desktop.wm.preferences num-workspaces 1
+  local command=("${base_command[@]}" org.gnome.desktop.search-providers)
+  "${command[@]}" disable-external true
 
-  "${command[@]}" org.gnome.mutter center-new-windows true
-  "${command[@]}" org.gnome.mutter check-alive-timeout 0
-  "${command[@]}" org.gnome.mutter dynamic-workspaces false
+  local command=("${base_command[@]}" org.gnome.desktop.session)
+  "${command[@]}" idle-delay 0
 
-  "${command[@]}" org.gnome.nautilus.preferences default-folder-viewer list-view
-  "${command[@]}" org.gnome.nautilus.window-state maximized true
+  local command=("${base_command[@]}" org.gnome.desktop.sound)
+  "${command[@]}" event-sounds false
 
-  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-down-quiet-static "['XF86AudioLowerVolume']"
-  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-down-static "['']"
-  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-mute-quiet-static "['XF86AudioMute']"
-  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-mute-static "['']"
-  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-up-quiet-static "['XF86AudioRaiseVolume']"
-  "${command[@]}" org.gnome.settings-daemon.plugins.media-keys volume-up-static "['']"
+  local command=("${base_command[@]}" org.gnome.desktop.wm.keybindings)
+  "${command[@]}" close "['<Alt><Control>q']"
+  "${command[@]}" cycle-windows '[]'
+  "${command[@]}" minimize "['<Alt>Escape']"
+  "${command[@]}" panel-run-dialog "['<Alt><Control>r']"
+  "${command[@]}" switch-applications '[]'
+  "${command[@]}" switch-applications-backward '[]'
+  "${command[@]}" switch-group '[]'
+  "${command[@]}" switch-windows "['<Alt>Tab']"
+  "${command[@]}" switch-windows-backward "['<Alt><Shift>Tab']"
 
-  "${command[@]}" org.gnome.settings-daemon.plugins.power ambient-enabled false
-  "${command[@]}" org.gnome.settings-daemon.plugins.power idle-dim false
-  "${command[@]}" org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing
-  "${command[@]}" org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 300
+  local command=("${base_command[@]}" org.gnome.desktop.wm.preferences)
+  "${command[@]}" num-workspaces 1
 
-  "${command[@]}" org.gnome.shell enabled-extensions "['customizations', 'user-theme@gnome-shell-extensions.gcampax.github.com']"
-  "${command[@]}" org.gnome.shell favorite-apps "['Alacritty.desktop', 'chromium-browser.desktop']"
-  "${command[@]}" org.gnome.shell welcome-dialog-last-shown-version 100
+  local command=("${base_command[@]}" org.gnome.mutter)
+  "${command[@]}" center-new-windows true
+  "${command[@]}" check-alive-timeout 0
+  "${command[@]}" dynamic-workspaces false
 
-  "${command[@]}" org.gnome.shell.extensions.user-theme name customizations
+  local command=("${base_command[@]}" org.gnome.nautilus.preferences)
+  "${command[@]}" default-folder-viewer list-view
 
-  "${command[@]}" org.gnome.shell.keybindings switch-to-application-1 "['<Alt><Ctrl>t']"
-  "${command[@]}" org.gnome.shell.keybindings switch-to-application-2 "['<Alt><Ctrl>w']"
+  local command=("${base_command[@]}" org.gnome.nautilus.window-state)
+  "${command[@]}" maximized true
+
+  local command=("${base_command[@]}" org.gnome.settings-daemon.plugins.media-keys)
+  "${command[@]}" volume-down-quiet-static "['XF86AudioLowerVolume']"
+  "${command[@]}" volume-down-static "['']"
+  "${command[@]}" volume-mute-quiet-static "['XF86AudioMute']"
+  "${command[@]}" volume-mute-static "['']"
+  "${command[@]}" volume-up-quiet-static "['XF86AudioRaiseVolume']"
+  "${command[@]}" volume-up-static "['']"
+
+  local command=("${base_command[@]}" org.gnome.settings-daemon.plugins.power)
+  "${command[@]}" ambient-enabled false
+  "${command[@]}" idle-dim false
+  "${command[@]}" sleep-inactive-ac-type nothing
+  "${command[@]}" sleep-inactive-battery-timeout 300
+
+  local command=("${base_command[@]}" org.gnome.shell)
+  "${command[@]}" enabled-extensions "['customizations', 'user-theme@gnome-shell-extensions.gcampax.github.com']"
+  "${command[@]}" favorite-apps "['org.gnome.Terminal.desktop', 'chromium-browser.desktop']"
+  "${command[@]}" welcome-dialog-last-shown-version 100
+
+  local command=("${base_command[@]}" org.gnome.shell.extensions.user-theme)
+  "${command[@]}" name customizations
+
+  local command=("${base_command[@]}" org.gnome.shell.keybindings)
+  "${command[@]}" switch-to-application-1 "['<Alt><Ctrl>t']"
+  "${command[@]}" switch-to-application-2 "['<Alt><Ctrl>w']"
 }
 
 function set-hostname {
