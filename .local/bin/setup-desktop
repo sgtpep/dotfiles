@@ -13,7 +13,7 @@ function enable-rpm-fusion {
 function install-packages {
   local names=(
     ImageMagick
-    alacritty-0.12.2
+    alacritty
     android-tools
     bash
     bash-completion
@@ -187,8 +187,6 @@ function set-gsettings {
   local command=(gsettings set)
 
   "${command[@]}" org.gnome.Settings window-state '(980, 640, true)'
-
-  "${command[@]}" org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/ excluded-apps "['org.gnome.DiskUtility.desktop']"
 
   "${command[@]}" org.gnome.desktop.background primary-color black
 
@@ -389,6 +387,19 @@ function create-npm-lib {
   mkdir -p ~/.npm/lib
 }
 
+function disable-app-folders {
+  local name='X-GNOME-Utilities;'
+  while IFS= read -r path; do
+    local directory=~/.local/share/applications
+    mkdir -p "$directory"
+
+    local target=$directory/${path##*/}
+    cp "$path" "$target"
+
+    sed -i "s/\b$name//" "$target"
+  done < <(grep -lr "^Categories=.*\b$name" /usr/share/applications)
+}
+
 function download-dictionaries {
   local path=~/.stardict/dic
   ! ls "$path"/* &> /dev/null || return 0
@@ -424,6 +435,7 @@ function setup-home {
   clone-repositories
   copy-netrc
   create-npm-lib
+  disable-app-folders
   download-dictionaries
   hide-waydroid-icons
   import-gpg-key
