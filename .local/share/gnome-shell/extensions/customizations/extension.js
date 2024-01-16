@@ -6,6 +6,8 @@ import {
 
 export default class {
   enable() {
+    global.display.get_monitor_in_fullscreen = () => false;
+
     const hasOverview = sessionMode.hasOverview;
     sessionMode.hasOverview = false;
     const startupComplete = layoutManager.connect("startup-complete", () => {
@@ -17,10 +19,5 @@ export default class {
       signalId: "window-demands-attention",
     });
     GObject.signal_handler_block(global.display, windowDemandsAttention);
-
-    Object.defineProperty(layoutManager.primaryMonitor, "inFullscreen", {
-      configurable: true,
-      value: false,
-    });
   }
 }
