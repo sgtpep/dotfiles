@@ -3,10 +3,10 @@ const id = "gcpccpgdkmihefbjbhkipbjcpfaokokd-hints";
 
 const queryElements = () => {
   const elements = document.querySelectorAll(
-    'a, button, input:not([type="hidden"]), select, textarea'
+    'a, button, input:not([type="hidden"]), select, textarea',
   );
   const visibleElements = [...elements].filter((element) =>
-    elementVisible(element)
+    elementVisible(element),
   );
   return visibleElements;
 };
@@ -53,7 +53,7 @@ const listenHintsEvents = (hints, labels) => {
     () => {
       hideHints();
     },
-    { once: true }
+    { once: true },
   );
 
   let input = "";
@@ -91,8 +91,8 @@ const showHints = () => {
   const elements = queryElements();
   for (const [index, element] of Object.entries(elements)) {
     const { length } = elements.length.toString();
-    const paddedIndex = index.toString().padStart(length, "0");
-    const label = paddedIndex.map((digit) => characters[digit]).join("");
+    const numericLabel = index.toString().padStart(length, "0");
+    const label = [...numericLabel].map((digit) => characters[digit]).join("");
 
     labels[label] = element;
 
