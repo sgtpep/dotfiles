@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+from datetime import datetime
+from email.message import EmailMessage
+from imaplib import IMAP4_SSL, Time2Internaldate
+from netrc import netrc
+from os.path import expanduser
+from re import compile as compile_pattern
+from subprocess import run
+from sys import argv
+from time import time
+
+excluded_names = ['.gitignore', 'tasks-periodic']
+mailbox = 'Notes'
+netrc_index = 0
+repository = argv[1] if len(argv) > 1 else expanduser('~/notes')
+
+def get_notes():
+    output = run('git ls-tree -z -r HEAD --name-only | xargs -0 -I {} git log -1 --format=\'%at {}\' -- {}', capture_output=True, cwd=repository, encoding='utf8', shell=True).stdout
+    lines = output.strip().split('\n')
+
+    notes = {}
+    pattern = compile_pattern(r'^(?P<timestamp>.+?) (?P<name>.+)')
+    for line in lines:
+        note = pattern.search(line).groupdict()
+        if note['name'] in excluded_names:
+            continue
+
+        note['datetime'] = datetime.fromtimestamp(int(note['timestamp']))
+
+        notes[note['name']] = note
+    return notes
+
+def get_credentials():
+    hosts = netrc().hosts
+    [keys, values] = [hosts.keys(), hosts.values()]
+    host = list(keys)[netrc_index]
+    [login, _, password] = list(values)[netrc_index]
+    return (host, login, password)
+
+def connect(host, login, password):
+    imap = IMAP4_SSL(host)
+    imap.login(login, password)
+    return imap
+
+def select_mailbox(imap):
+    data = imap.list(mailbox)
+    if data[1][0] is None:
+        imap.create(mailbox)
+
+    imap.select(mailbox)
+
+def fetch_messages(imap):
+    data = imap.uid('FETCH', '1:*', '(INTERNALDATE BODY.PEEK[HEADER.FIELDS (SUBJECT)])')
+    if data[1][0] is None:
+        return {}
+
+    lines = [b''.join(line).decode('utf8').replace('\r\n', '') for line in data[1] if line != b')']
+
+    messages = {}
+    pattern = compile_pattern(r'\(UID (?P<uid>.+?) INTERNALDATE "(?P<internal_date>.+?)" .+?}(?:Subject: |)(?P<subject>.*)')
+    for line in lines:
+        message = pattern.search(line).groupdict()
+
+        message['datetime'] = datetime.strptime(message['internal_date'], '%d-%b-%Y %H:%M:%S %z').replace(tzinfo=None)
+
+        messages[message['subject']] = message
+    return messages
+
+def delete_messages(imap, uids):
+    if not uids:
+        return
+
+    imap.uid('STORE', ','.join(uids), '+FLAGS', r'\Deleted')
+    imap.expunge()
+
+def get_note(name):
+    output = run(['git', 'show', 'master:' + name], capture_output=True, cwd=repository, encoding='utf8').stdout
+    return output
+
+def append_message(imap, subject):
+    message = EmailMessage()
+    message['Subject'] = subject
+    message['Content-Type'] = 'text/plain; charset=UTF-8'
+
+    note = get_note(subject)
+    message.set_payload(note)
+
+    date_time = Time2Internaldate(time())
+    serialized_message = str(message).encode('utf8')
+    imap.append(mailbox, r'\Seen', date_time, serialized_message)
+
+def main():
+    notes = get_notes()
+
+    credentials = get_credentials()
+    with connect(*credentials) as imap:
+        select_mailbox(imap)
+        messages = fetch_messages(imap)
+
+        created_subjects = [name for name in notes.keys() if name not in messages]
+        updated_subjects = [subject for subject in messages.keys() if subject in notes and messages[subject]['datetime'] < notes[subject]['datetime']]
+        deleted_subjects = [subject for subject in messages.keys() if subject not in notes.keys()]
+
+        deleted_uids = [messages[subject]['uid'] for subject in deleted_subjects + updated_subjects]
+        delete_messages(imap, deleted_uids)
+
+        for subject in created_subjects + updated_subjects:
+            append_message(imap, subject)
+
+if __name__ == '__main__':
+    main()

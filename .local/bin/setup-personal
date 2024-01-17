@@ -50,6 +50,20 @@ deb https://security.debian.org/ $release-security main
 EOF
 }
 
+function download-dotfile {
+  local relative_path=$1
+
+  local path=~/$relative_path
+  [[ ! -f $path ]] || return 0
+
+  local directory=${path%/*}
+  mkdir -p "$directory"
+
+  wget -O "$path" https://raw.githubusercontent.com/sgtpep/dotfiles/master/"$relative_path"
+
+  [[ $path != ~/.local/bin/* ]] || chmod +x "$path"
+}
+
 function download-bookletify {
   download-dotfile .local/bin/bookletify
 }
@@ -132,6 +146,17 @@ function schedule-dead-letter {
   sudo tee /etc/cron.d/dead-letter > /dev/null <<< '0 * * * * '"$USER"' path=~/dead.letter && [ -f "$path" ] && mail -s "${path##*/}" "$LOGNAME" < "$path" && rm "$path"'
 }
 
+function schedule-generate-gallery {
+  local name=generate-gallery
+  download-dotfile .local/bin/"$name"
+
+  sudo tee /etc/cron.d/"$name" > /dev/null << EOF
+PATH=/usr/bin:/bin:$HOME/.local/bin
+0 0 */5 * * $USER $name ~/.config/gallery/config ~/www/gallery
+0 0 */5 * * $USER $name ~/.config/*-gallery/config ~/www/*-gallery
+EOF
+}
+
 function schedule-rss2email {
   local name=r2e
   sudo tee /etc/cron.d/"$name" > /dev/null << EOF
@@ -140,28 +165,26 @@ function schedule-rss2email {
 EOF
 }
 
-function download-dotfile {
-  local relative_path=$1
-
-  local path=~/$relative_path
-  [[ ! -f $path ]] || return 0
-
-  local directory=${path%/*}
-  mkdir -p "$directory"
-
-  wget -O "$path" https://raw.githubusercontent.com/sgtpep/dotfiles/master/"$relative_path"
-
-  [[ $path != ~/.local/bin/* ]] || chmod +x "$path"
-}
-
-function setup-gallery {
-  local name=generate-gallery
+function schedule-sync-notes {
+  local name=sync-notes
   download-dotfile .local/bin/"$name"
 
   sudo tee /etc/cron.d/"$name" > /dev/null << EOF
 PATH=/usr/bin:/bin:$HOME/.local/bin
-0 0 */5 * * $USER $name ~/.config/gallery/config ~/www/gallery
-0 0 */5 * * $USER $name ~/.config/*-gallery/config ~/www/*-gallery
+0 6-21 * * * $USER $name ~/repositories/notes.git
+EOF
+}
+
+function schedule-tasks {
+  local name=tasks
+  download-dotfile .local/bin/"$name"
+
+  local mail='mail -E -a "Date: $(date -R)" -s'
+  sudo tee /etc/cron.d/"$name" > /dev/null << EOF
+PATH=/usr/bin:/bin:$HOME/.local/bin
+0 5 * * * $USER $name today | $mail Today "\$LOGNAME"
+0 5 * * * $USER $name tomorrow | $mail Tomorrow "\$LOGNAME"
+0 5 * * 0 $USER $name | $mail Week "\$LOGNAME"
 EOF
 }
 
@@ -225,28 +248,16 @@ function setup-nginx {
   sudo usermod -a -G adm "$USER"
 }
 
-function setup-tasks {
-  local name=tasks
-  download-dotfile .local/bin/"$name"
-
-  local mail='mail -E -a "Date: $(date -R)" -s'
-  sudo tee /etc/cron.d/"$name" > /dev/null << EOF
-PATH=/usr/bin:/bin:$HOME/.local/bin
-0 5 * * * $USER $name today | $mail Today "\$LOGNAME"
-0 5 * * * $USER $name tomorrow | $mail Tomorrow "\$LOGNAME"
-0 5 * * 0 $USER $name | $mail Week "\$LOGNAME"
-EOF
-}
-
 function setup-system {
   configure-msmtp
   configure-ufw
   configure-unattended-upgrades
   schedule-dead-letter
+  schedule-generate-gallery
   schedule-rss2email
-  setup-gallery
+  schedule-sync-notes
+  schedule-tasks
   setup-nginx
-  setup-tasks
 }
 
 function confirm-reboot {
