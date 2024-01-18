@@ -2,4 +2,4 @@
 set -eu
 
 title=$1
-exec gnome-terminal -t "$title" -- "$@"
+exec foot -T "$title" -- "$@"

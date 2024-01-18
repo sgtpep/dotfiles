@@ -27,14 +27,13 @@ function install-packages {
     dnf-automatic
     eog
     ffmpeg
+    foot
     gimp
     git
     gnome-disk-utility
     gnome-shell
     gnome-shell-extension-user-theme
-    gnome-terminal
     gnupg2
-    gpaste
     gvfs-mtp
     gzip
     htop
@@ -187,38 +186,8 @@ function set-graphical-target {
 function set-gsettings {
   local base_command=(gsettings set)
 
-  local command=("${base_command[@]}" org.gnome.GPaste)
-  "${command[@]}" save-history false
-  "${command[@]}" synchronize-clipboards true
-  "${command[@]}" track-changes false
-
   local command=("${base_command[@]}" org.gnome.Settings)
   "${command[@]}" window-state '(980, 640, true)'
-
-  local command=("${base_command[@]}" org.gnome.Terminal.Legacy.Keybindings:/org/gnome/terminal/legacy/keybindings/)
-  "${command[@]}" paste '<Alt><Control>v'
-  "${command[@]}" zoom-in '<Control>equal'
-  local number
-  for number in {1..10}; do
-    "${command[@]}" switch-to-tab-"$number" disabled
-  done
-
-  local command=("${base_command[@]}" org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/)
-  "${command[@]}" background-color 'White'
-  "${command[@]}" cell-height-scale 1.05
-  "${command[@]}" custom-command "bash -l -c 'exec tmux'"
-  "${command[@]}" font 'DejaVu Sans Mono 14'
-  "${command[@]}" foreground-color 'Black'
-  "${command[@]}" palette "['White', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black']"
-  "${command[@]}" scrollback-lines 0
-  "${command[@]}" scrollbar-policy never
-  "${command[@]}" use-custom-command true
-  "${command[@]}" use-system-font false
-  "${command[@]}" use-theme-colors false
-
-  local command=("${base_command[@]}" org.gnome.Terminal.Legacy.Settings)
-  "${command[@]}" confirm-close false
-  "${command[@]}" menu-accelerator-enabled false
 
   local command=("${base_command[@]}" org.gnome.desktop.background)
   "${command[@]}" primary-color black
@@ -296,7 +265,7 @@ function set-gsettings {
 
   local command=("${base_command[@]}" org.gnome.shell)
   "${command[@]}" enabled-extensions "['customizations', 'user-theme@gnome-shell-extensions.gcampax.github.com']"
-  "${command[@]}" favorite-apps "['org.gnome.Terminal.desktop', 'chromium-browser.desktop']"
+  "${command[@]}" favorite-apps "['org.codeberg.dnkl.foot.desktop', 'chromium-browser.desktop']"
   "${command[@]}" welcome-dialog-last-shown-version 100
 
   local command=("${base_command[@]}" org.gnome.shell.extensions.user-theme)
@@ -461,6 +430,12 @@ function download-dictionaries {
   ssh personal cat archive/dictionaries.tar.gz | tar -xz -C "$path"
 }
 
+function harden-bash-history {
+  local path=~/.bash_history
+  touch "$path"
+  sudo chattr +a "$path"
+}
+
 function hide-waydroid-icons {
   local path=~/.local/share/applications
   mkdir -p "$path"
@@ -490,6 +465,7 @@ function setup-home {
   create-npm-lib
   disable-app-folders
   download-dictionaries
+  harden-bash-history
   hide-waydroid-icons
   import-gpg-key
 }

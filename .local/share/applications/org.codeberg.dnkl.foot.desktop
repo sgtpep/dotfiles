@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Exec=foot
+Name=Terminal
+Icon=terminal
+StartupWMClass=foot
