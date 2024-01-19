@@ -91,7 +91,7 @@ item_url = lambda key: \
   )
 
 item_media_html = lambda key, is_thumbnail=False: \
-  '<img class="media" src="{}">'.format(html.escape(item_url(key))) \
+  '<img class="media" src="{}" loading="lazy">'.format(html.escape(item_url(key))) \
     if os.path.splitext(key)[1] in ('.gif', '.jpeg', '.jpg', '.png') else \
   '<video class="media"{} src="{}"{}></video>'.format(
     ' preload="metadata"' if is_thumbnail else '',
