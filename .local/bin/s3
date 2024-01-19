@@ -14,7 +14,7 @@ else
   eval "$output"
 
   mkdir -p "$path"
-  rclone mount --daemon s3:"$bucket" "$path"
+  rclone mount s3:"$bucket" "$path" &
 
   until mountpoint -q "$path"; do
     sleep 1
