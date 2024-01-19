@@ -97,9 +97,9 @@ function install-facetimehd-firmware {
 
   local path=/tmp/facetimehd-firmware
   mkdir -p "$path"
-  curl https://codeload.github.com/patjak/facetimehd-firmware/tar.gz/refs/heads/master | tar -xz -C "$path"
+  curl https://codeload.github.com/patjak/facetimehd-firmware/tar.gz/refs/heads/master | tar -xz -C "$path" --strip-components=1
 
-  cd "$path"/*
+  cd "$path"
   sha256sum -c <<< '97a01f5e1100dac99b11c6d62dc30039362a7d89ba99a0305bcea19bab3f55ff Makefile'
   make
   sudo make install
