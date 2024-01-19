@@ -76,11 +76,26 @@ function remove-packages {
   ! rpm -q "${names[@]}" > /dev/null || sudo dnf -y remove "${names[@]}"
 }
 
-function install-facetimehd {
-  local name=facetimehd
-  ! rpm -q "$name" > /dev/null || return 0
+function install-copr-packages {
+  declare -A names=(
+    [facetimehd]=frgt10/facetimehd-dkms
+    [scrcpy]=zeno/scrcpy
+  )
 
-  local path=/tmp/$name
+  local name
+  for name in "${!names[@]}"; do
+    ! rpm -q "$name" > /dev/null || continue
+
+    local repository=${names[$name]}
+    sudo dnf -y copr enable "$repository"
+    sudo dnf -y install "$name"
+  done
+}
+
+function install-facetimehd-firmware {
+  [[ ! -f /usr/lib/firmware/facetimehd/firmware.bin ]] || return 0
+
+  local path=/tmp/facetimehd-firmware
   mkdir -p "$path"
   curl https://codeload.github.com/patjak/facetimehd-firmware/tar.gz/refs/heads/master | tar -xz -C "$path"
 
@@ -89,9 +104,6 @@ function install-facetimehd {
   make
   sudo make install
   cd -
-
-  sudo dnf -y copr enable frgt10/facetimehd-dkms
-  sudo dnf -y install facetimehd
 }
 
 function install-google-chrome {
@@ -128,7 +140,8 @@ function install-dependencies {
   install-packages
   remove-packages
 
-  install-facetimehd
+  install-copr-packages
+  install-facetimehd-firmware
   install-google-chrome
   install-npm-completion
   install-pip-packages
@@ -382,20 +395,20 @@ EOF
 }
 
 function clone-repositories {
-  declare -A repositories=(
+  declare -A names=(
     [notes]=notes
     [pass]=.password-store
   )
 
   local name
-  for name in "${!repositories[@]}"; do
-    local path=~/${repositories[$name]}
+  for name in "${!names[@]}"; do
+    local path=~/${names[$name]}
     [[ ! -d $path ]] || continue
 
     git clone personal:repositories/"$name".git "$path"
   done
 
-  local path=~/${repositories[pass]}
+  local path=~/${names[pass]}
   add-pass-hook "$path"
 }
 
