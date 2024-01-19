@@ -176,6 +176,32 @@ function s:comment_code() range
   normal ^
 endfunction
 
+function s:update_path()
+  if isdirectory('.git')
+    let output = systemlist('git ls-files')
+    let paths = map(output, {_, path -> path =~ '/' ? fnamemodify(path, ':h') : ''})
+  else
+    let paths = systemlist('find -type d')
+  endif
+
+  call sort(paths)
+  call uniq(paths)
+  call extend(paths, [''], 0)
+  let &path = join(paths, ',')
+endfunction
+
+function s:toggle_quickfix()
+  let number = filter(range(1, winnr('$')), {_, number -> win_gettype(number) == 'quickfix'})->get(0)
+  if !number
+    cwindow
+  elseif &buftype != 'quickfix'
+    let id = win_getid(number)
+    call win_gotoid(id)
+  else
+    cclose
+  endif
+endfunction
+
 function s:format_code()
   update
 
@@ -221,20 +247,6 @@ function s:format_code()
   update
 endfunction
 
-function s:update_path()
-  if isdirectory('.git')
-    let output = systemlist('git ls-files')
-    let paths = map(output, {_, path -> path =~ '/' ? fnamemodify(path, ':h') : ''})
-  else
-    let paths = systemlist('find -type d')
-  endif
-
-  call sort(paths)
-  call uniq(paths)
-  call extend(paths, [''], 0)
-  let &path = join(paths, ',')
-endfunction
-
 function s:map_keys()
   let g:mapleader = ' '
 
@@ -257,6 +269,7 @@ function s:map_keys()
   nnoremap <silent> <Leader>F :call <SID>update_path()<CR>
   nnoremap <silent> <Leader>N :bnext<CR>
   nnoremap <silent> <Leader>P :bprevious<CR>
+  nnoremap <silent> <Leader>q :call <SID>toggle_quickfix()<CR>
   nnoremap <silent> <Leader>R :silent! mkview<CR>:edit!<CR>:silent! loadview<CR>
   nnoremap <silent> <Leader>h :setlocal hlsearch!<CR>
   nnoremap <silent> <Leader>n :cnext<CR>
