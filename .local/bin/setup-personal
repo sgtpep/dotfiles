@@ -1,45 +1,47 @@
 #!/bin/bash
 set -eu
 
+domain=danil.mobi
 email=mail'@'danil.mobi
-hostname=danil.mobi
+hostname=personal
 letsencrypt=/etc/letsencrypt
-root=/var/www/html
+root_user=admin
+web_root=/var/www/html
 
 function run-actions {
   local action=$1
 
   local rsync=(rsync -FOahvz --progress)
-  local path=~/Downloads/personal
+  local path=~/Downloads/$hostname
 
-  [[ $action != backup ]] || exec "${rsync[@]}" --delete personal: "$path"
-  [[ $action != restore ]] || exec "${rsync[@]}" -u "$path"/ personal:
+  [[ $action != backup ]] || exec "${rsync[@]}" --delete "$hostname": "$path"
+  [[ $action != restore ]] || exec "${rsync[@]}" -u "$path"/ "$hostname":
 
   return 1
 }
 
 function setup-user {
   local directory=.ssh
-  ! ssh personal "[[ -d $directory ]]" || return 0
+  ! ssh "$hostname" "[[ -d $directory ]]" || return 0
 
-  local timezone=$(readlink /etc/localtime | sed 's|^/usr/share/zoneinfo/||')
-  local user=$(ssh personal 'echo "$USER"')
-  local password=$(sudo grep -Po "(?<=^$user:)[^:]+" /etc/shadow)
+  local timezone=$(readlink -f /etc/localtime | sed 's|^/usr/share/zoneinfo/||')
+  local password=$(sudo grep -Po "(?<=^$USER:)[^:]+" /etc/shadow)
 
-  ssh root@personal "$SHELL" -"$-" << EOF
-  timedatectl set-timezone "$timezone"
+  ssh "$root_user"@"$hostname" "$SHELL" -"$-" << EOF
+  sudo hostnamectl hostname '$hostname'
+  sudo timedatectl set-timezone '$timezone'
 
-  id "$user" &> /dev/null || useradd -m -G sudo -s "\$SHELL" "$user"
-  chpasswd -e <<< "$user:$password"
+  id '$USER' &> /dev/null || sudo useradd -m -G sudo -s "\$SHELL" '$USER'
+  sudo chpasswd -e <<< '$USER:$password'
 
-  cp -r "$directory" ~$user
-  chown -R "$user": ~$user/"$directory"
+  sudo cp -r '$directory' ~'$USER'
+  sudo chown -R '$USER': ~$USER/'$directory'
 EOF
 }
 
 function run-script {
   local script=$(< "${BASH_SOURCE[0]}")
-  ssh -t personal "set -$-; $script"
+  ssh -t "$hostname" "set -$-; $script"
 }
 
 function configure-apt-sources {
@@ -81,7 +83,6 @@ function upgrade-system {
 
 function install-packages {
   local names=(
-    aria2
     bsd-mailx
     certbot
     git
@@ -95,24 +96,18 @@ function install-packages {
     ufw
     unattended-upgrades
   )
-  dpkg -s "${names[@]}" &> /dev/null || sudo apt -y install "${names[@]}"
-}
-
-function symlink-netrc {
-  local path=~/.netrc
-  local target=/etc/${path#~/.}
-  sudo ln -fs "$path" "$target"
-
-  echo "$target"
+  dpkg -s "${names[@]}" &> /dev/null || sudo DEBIAN_FRONTEND=noninteractive apt -y install "${names[@]}"
 }
 
 function configure-msmtp {
   local aliases=/etc/aliases
   sudo tee "$aliases" > /dev/null <<< "default: $email"
 
-  local path=$(symlink-netrc)
-  local host=$(grep -Po '(?<=\bmachine\s)\s*mail\.[^\s]+' "$path")
+  local netrc=~/.netrc
+  local path=/etc/${netrc#~/.}
+  sudo ln -fs "$netrc" "$path"
 
+  local host=$(grep -Po '(?<=\bmachine\s)\s*mail\.[^\s]+' "$path")
   sudo tee /etc/msmtprc > /dev/null << EOF
 account default
   aliases $aliases
@@ -193,14 +188,14 @@ function setup-certbot {
   local path=$letsencrypt/cli.ini
   grep -q "^$name " "$path" || sudo tee -a "$path" > /dev/null <<< $'\n'"$name = systemctl reload nginx"
 
-  [[ -d $letsencrypt/live ]] || sudo certbot certonly -d "$hostname" -m "$email" -w "$root" --agree-tos --no-eff-email --webroot
+  [[ -d $letsencrypt/live ]] || sudo certbot certonly -d "$domain" -m "$email" -w "$web_root" --agree-tos --no-eff-email --webroot
 }
 
 function configure-nginx {
   local path=/etc/nginx/sites-enabled/default
   local checksum=$(md5sum "$path")
 
-  local certificate=$letsencrypt/live/$hostname
+  local certificate=$letsencrypt/live/$domain
   sudo tee "$path" > /dev/null << EOF
 server_tokens off;
 
@@ -214,7 +209,7 @@ server {
 
   add_header Strict-Transport-Security 'max-age=63072000; includeSubDomains; preload';
   gzip on;
-  root $root;
+  root $web_root;
   ssl_certificate $certificate/fullchain.pem;
   ssl_certificate_key $certificate/privkey.pem;
 
@@ -242,8 +237,8 @@ function setup-nginx {
   setup-certbot
   configure-nginx
 
-  sudo rm -fr "$root"
-  sudo ln -fs ~/www "$root"
+  sudo rm -fr "$web_root"
+  sudo ln -fs ~/www "$web_root"
 
   sudo usermod -a -G adm "$USER"
 }
@@ -252,6 +247,7 @@ function setup-system {
   configure-msmtp
   configure-ufw
   configure-unattended-upgrades
+  download-bookletify
   schedule-dead-letter
   schedule-generate-gallery
   schedule-rss2email
@@ -280,7 +276,6 @@ function main {
   fi
 
   configure-apt-sources
-  download-bookletify
   upgrade-system
   install-packages
   setup-system

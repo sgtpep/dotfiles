@@ -340,7 +340,6 @@ function s:set_options()
   set iskeyword+=-
   set suffixesadd=.js,.jsx,.ts,.tsx
   set undofile
-  set langmap=ёЁйЙцЦуУкКеЕнНгГшШщЩзЗхХъЪ\\/фФыЫвВаАпПрРоОлЛдДжЖэЭяЯчЧсСмМиИтТьЬбБюЮ.\\,;`~qQwWeErRtTyYuUiIoOpP[{]}\\|aAsSdDfFgGhHjJkKlL;:'\"zZxXcCvVbBnNmM\\,<.>/\?
 endfunction
 
 function s:main()
