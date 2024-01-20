@@ -63,6 +63,7 @@ function install-packages {
     util-linux
     vifm
     vim-X11
+    vlc
     w3m
     waydroid
     which
