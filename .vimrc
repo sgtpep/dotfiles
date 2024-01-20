@@ -299,6 +299,20 @@ function s:patch_matchparen()
   call writefile(substituted_content, path)
 endfunction
 
+function s:purge_directories()
+  let path = fnamemodify(&viewdir, ':h') . '/.purge'
+  let delta = localtime() - getftime(path)
+  let days = 30
+  let seconds = 60 * 60 * 24 * days
+  if delta < seconds
+    return
+  endif
+  call writefile([], path)
+
+  let command = printf('find %s %s %s -type f -mtime +%d -delete', shellescape(&directory), shellescape(&undodir), shellescape(&viewdir), days)
+  call system(command)
+endfunction
+
 function s:set_directories()
   let path = fnamemodify(&viewdir, ':h')
 
@@ -307,6 +321,8 @@ function s:set_directories()
 
   let &undodir = path . '/undo'
   call mkdir(&undodir, 'p')
+
+  call s:purge_directories()
 endfunction
 
 function s:set_options()
