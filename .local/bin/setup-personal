@@ -223,6 +223,8 @@ server {
     auth_basic_user_file $HOME/.config/\$1/htpasswd;
   }
 
+  location /music {}
+
   location /public {
     autoindex on;
     charset UTF-8;
