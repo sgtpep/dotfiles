@@ -12,6 +12,8 @@ set smartcase
 
 filetype <application/gzip,application/x-tar> tar -x -f %f
 filetype <application/zip> unzip -- %f
+fileviewer <application/gzip,application/x-tar> tar -f %f --list
+fileviewer <application/zip> unzip -l -- %f
 fileviewer <audio/*,image/*,video/*> file -b -- %f
 filextype <*> gio open %f %i &
 
