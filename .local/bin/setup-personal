@@ -85,6 +85,7 @@ function install-packages {
   local names=(
     bsd-mailx
     certbot
+    cron
     git
     man-db
     msmtp-mta
