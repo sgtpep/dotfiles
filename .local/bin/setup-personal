@@ -224,9 +224,11 @@ server {
     auth_basic_user_file $HOME/.config/\$1/htpasswd;
   }
 
-  location /music {}
+  location ~ ^/(music|radio)/ {
+    index index.m3u;
+  }
 
-  location /public {
+  location /public/ {
     autoindex on;
     charset UTF-8;
   }

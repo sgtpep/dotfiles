@@ -1,0 +1,30 @@
+#!/bin/bash
+set -eu
+
+index=index.m3u
+root=$1
+
+find "$root" -name '*.m3u' -delete
+
+while IFS= read -r directory; do
+  for path in "$directory"/*; do
+    filename=${path##*/}
+    if [[ -d $path ]]; then
+      filename+=/$index
+      title=${filename%/*}
+    else
+      title=${filename%.*}
+      title=${title//_/ }
+    fi
+
+    playlist=$directory/$index
+    if [[ ! -f $playlist ]]; then
+      echo '#EXTM3U' > "$playlist"
+      [[ $directory != $root ]] || echo '#PLAYLIST: Музыка' >> "$playlist"
+    fi
+    cat >> "$playlist" << EOF
+#EXTINF: -1, $title
+$filename
+EOF
+  done
+done < <(find "$root" -type d)
