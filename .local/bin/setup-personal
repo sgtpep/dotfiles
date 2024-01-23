@@ -29,7 +29,6 @@ function setup-user {
   local password=$(sudo grep -Po "(?<=^$USER:)[^:]+" /etc/shadow)
 
   ssh "$root_user"@"$hostname" "$SHELL" -"$-" << EOF
-  sudo hostnamectl hostname '$hostname'
   sudo timedatectl set-timezone '$timezone'
 
   id '$USER' &> /dev/null || sudo useradd -m -G sudo -s "\$SHELL" '$USER'
@@ -87,11 +86,13 @@ function install-packages {
     bsd-mailx
     certbot
     cron
+    fuse
     git
     man-db
     msmtp-mta
     ncdu
     nginx-light
+    rclone
     rss2email
     rsync
     tmux
@@ -99,6 +100,50 @@ function install-packages {
     unattended-upgrades
   )
   dpkg -s "${names[@]}" &> /dev/null || sudo DEBIAN_FRONTEND=noninteractive apt -y install "${names[@]}"
+}
+
+function configure-hostname {
+  sudo hostnamectl hostname "$hostname"
+}
+
+function configure-media {
+  local user=media
+  local root=/var/sftp/$user
+
+  sudo mkdir -p "$root"
+  id "$user" &> /dev/null || sudo useradd -d "$root" -s /usr/sbin/nologin "$user"
+
+  local path=$config/$user-passwd
+  local password=$(< "$path")
+  sudo chpasswd -e <<< "$user:$password"
+
+  local path=/etc/ssh/sshd_config
+  if ! grep -q "^Match User $user$" "$path"; then
+    sudo tee -a "$path" > /dev/null << EOF
+
+HostKeyAlgorithms +ssh-rsa
+Match User $user
+  ChrootDirectory $root
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+EOF
+    sudo systemctl reload sshd
+  fi
+
+  sudo ln -fs /usr/bin/rclone /sbin/mount.rclone
+
+  local path=/etc/fstab
+  if ! grep -q "$root" "$path"; then
+    local name
+    for name in music radio; do
+      local mount=$root/$name
+      sudo mkdir -p "$mount"
+      sudo tee -a "$path" > /dev/null <<< "s3:danil-archive/$name $mount rclone _netdev,allow_other,cache_dir=/var/cache/rclone,config=$config/rclone.conf,gid=$user,noauto,nofail,rw,uid=$user,vfs_cache_mode=writes,x-systemd.automount,x-systemd.idle-timeout=10m 0 0"
+    done
+
+    sudo systemctl daemon-reload
+    sudo mount -a
+  fi
 }
 
 function configure-msmtp {
@@ -121,43 +166,6 @@ account default
   tls_trust_file /etc/ssl/certs/ca-certificates.crt
   user $email
 EOF
-}
-
-function configure-sftp {
-  local user=media
-  local root=/var/sftp/$user
-
-  sudo mkdir -p "$root"
-  id "$user" &> /dev/null || sudo useradd -d "$root" -s /usr/sbin/nologin "$user"
-
-  local password=$(< "$config"/"$user"-passwd)
-  sudo chpasswd -e <<< "$user:$password"
-
-  local path=/etc/ssh/sshd_config
-  if ! grep -q "^Match User $user$" "$path"; then
-    sudo tee -a "$path" > /dev/null << EOF
-
-HostKeyAlgorithms +ssh-rsa
-Match User $user
-  ChrootDirectory $root
-  ForceCommand internal-sftp
-  PasswordAuthentication yes
-EOF
-    sudo systemctl reload sshd
-  fi
-
-  local path=/etc/fstab
-  if ! grep -q "$root" "$path"; then
-    local directory
-    for directory in "$HOME"/"$user"/*; do
-      local mount=$root/${directory##*/}
-      sudo mkdir -p "$mount"
-      sudo tee -a "$path" > /dev/null <<< "$directory $mount none defaults,bind 0 0"
-    done
-
-    sudo systemctl daemon-reload
-    sudo mount -a
-  fi
 }
 
 function configure-ufw {
@@ -283,8 +291,9 @@ function setup-nginx {
 }
 
 function setup-system {
+  configure-hostname
+  configure-media
   configure-msmtp
-  configure-sftp
   configure-ufw
   configure-unattended-upgrades
   download-bookletify
