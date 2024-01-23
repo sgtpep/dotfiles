@@ -122,6 +122,43 @@ account default
 EOF
 }
 
+function configure-sftp {
+  local user=media
+  local root=/var/sftp/$user
+
+  sudo mkdir -p "$root"
+  id "$user" &> /dev/null || sudo useradd -d "$root" -s /usr/sbin/nologin "$user"
+
+  local password=$(< ~/.config/"$user"-passwd)
+  sudo chpasswd -e <<< "$user:$password"
+
+  local path=/etc/ssh/sshd_config
+  if ! grep -q "^Match User $user$" "$path"; then
+    sudo tee -a "$path" > /dev/null << EOF
+
+HostKeyAlgorithms +ssh-rsa
+Match User $user
+  ChrootDirectory $root
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+EOF
+    sudo systemctl reload sshd
+  fi
+
+  local path=/etc/fstab
+  if ! grep -q "$root" "$path"; then
+    local directory
+    for directory in "$HOME"/"$user"/*; do
+      local mount=$root/${directory##*/}
+      sudo mkdir -p "$mount"
+      sudo tee -a "$path" > /dev/null <<< "$directory $mount none defaults,bind 0 0"
+    done
+
+    sudo systemctl daemon-reload
+    sudo mount -a
+  fi
+}
+
 function configure-ufw {
   local output=$(sudo ufw status)
 
@@ -224,10 +261,6 @@ server {
     auth_basic_user_file $HOME/.config/\$1/htpasswd;
   }
 
-  location ~ ^/(music|radio)/ {
-    index index.m3u;
-  }
-
   location /public/ {
     autoindex on;
     charset UTF-8;
@@ -250,6 +283,7 @@ function setup-nginx {
 
 function setup-system {
   configure-msmtp
+  configure-sftp
   configure-ufw
   configure-unattended-upgrades
   download-bookletify
