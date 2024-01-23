@@ -4,6 +4,7 @@ set -eu
 domain=danil.mobi
 email=mail'@'danil.mobi
 hostname=personal
+config=~/.config/$hostname
 letsencrypt=/etc/letsencrypt
 root_user=admin
 web_root=/var/www/html
@@ -129,7 +130,7 @@ function configure-sftp {
   sudo mkdir -p "$root"
   id "$user" &> /dev/null || sudo useradd -d "$root" -s /usr/sbin/nologin "$user"
 
-  local password=$(< ~/.config/"$user"-passwd)
+  local password=$(< "$config"/"$user"-passwd)
   sudo chpasswd -e <<< "$user:$password"
 
   local path=/etc/ssh/sshd_config
@@ -185,8 +186,8 @@ function schedule-generate-gallery {
 
   sudo tee /etc/cron.d/"$name" > /dev/null << EOF
 PATH=/usr/bin:/bin:$HOME/.local/bin
-0 0 */5 * * $USER $name ~/.config/gallery/config ~/www/gallery
-0 0 */5 * * $USER $name ~/.config/*-gallery/config ~/www/*-gallery
+0 0 */5 * * $USER $name $config/gallery/config ~/www/gallery
+0 0 */5 * * $USER $name $config/*-gallery/config ~/www/*-gallery
 EOF
 }
 
@@ -258,7 +259,7 @@ server {
 
   location ~ ^/([^/]+-archive|(?:|[^/]+-)gallery)/ {
     auth_basic 'Log In';
-    auth_basic_user_file $HOME/.config/\$1/htpasswd;
+    auth_basic_user_file $config/\$1/htpasswd;
   }
 
   location /public/ {
