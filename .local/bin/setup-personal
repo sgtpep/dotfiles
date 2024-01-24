@@ -138,7 +138,9 @@ EOF
     for name in music radio; do
       local mount=$root/$name
       sudo mkdir -p "$mount"
-      sudo tee -a "$path" > /dev/null <<< "s3:danil-archive/$name $mount rclone _netdev,allow_other,cache_dir=/var/cache/rclone,config=$config/rclone.conf,gid=$user,noauto,nofail,rw,uid=$user,vfs_cache_mode=writes,x-systemd.automount,x-systemd.idle-timeout=10m 0 0"
+
+      [[ $name != music ]] || sudo tee -a "$path" > /dev/null <<< "s3:$USER-archive/$name $mount rclone _netdev,allow_other,cache_dir=/var/cache/rclone,config=$config/rclone.conf,gid=$user,noauto,nofail,rw,uid=$user,vfs_cache_mode=writes,x-systemd.automount,x-systemd.idle-timeout=10m 0 0"
+      [[ $name != radio ]] || sudo tee -a "$path" > /dev/null <<< "$HOME/archive/$name $mount none defaults,bind 0 0"
     done
 
     sudo systemctl daemon-reload
