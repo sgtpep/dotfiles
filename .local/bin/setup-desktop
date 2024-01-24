@@ -253,6 +253,10 @@ function set-gsettings {
   local command=("${base_command[@]}" org.gnome.desktop.wm.preferences)
   "${command[@]}" num-workspaces 1
 
+  local command=("${base_command[@]}" org.gnome.eog.ui)
+  "${command[@]}" image-gallery true
+  "${command[@]}" sidebar false
+
   local command=("${base_command[@]}" org.gnome.mutter)
   "${command[@]}" center-new-windows true
   "${command[@]}" check-alive-timeout 0
