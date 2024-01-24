@@ -67,6 +67,7 @@ function install-packages {
     w3m
     waydroid
     which
+    wireplumber
     wl-clipboard
     zip
   )
@@ -269,12 +270,18 @@ function set-gsettings {
   "${command[@]}" maximized true
 
   local command=("${base_command[@]}" org.gnome.settings-daemon.plugins.media-keys)
+  "${command[@]}" custom-keybindings "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']"
   "${command[@]}" volume-down-quiet-static "['XF86AudioLowerVolume']"
   "${command[@]}" volume-down-static "['']"
-  "${command[@]}" volume-mute-quiet-static "['XF86AudioMute']"
+  "${command[@]}" volume-mute-quiet-static "['']"
   "${command[@]}" volume-mute-static "['']"
   "${command[@]}" volume-up-quiet-static "['XF86AudioRaiseVolume']"
   "${command[@]}" volume-up-static "['']"
+
+  local command=("${base_command[@]}" org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/)
+  "${command[@]}" binding 'AudioMute'
+  "${command[@]}" command 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 1'
+  "${command[@]}" name 'Mute volume'
 
   local command=("${base_command[@]}" org.gnome.settings-daemon.plugins.power)
   "${command[@]}" ambient-enabled false
