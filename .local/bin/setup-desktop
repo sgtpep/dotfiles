@@ -22,13 +22,12 @@ function install-packages {
     chromium
     cups
     curl
-    cyrus-sasl-plain
+    default-fonts-core-emoji
     dejavu-sans-mono-fonts
     dnf-automatic
     eog
     ffmpeg
     foot
-    fuse
     gimp
     git
     gnome-disk-utility
@@ -39,7 +38,7 @@ function install-packages {
     gzip
     htop
     man-db
-    mutt
+    mutt cyrus-sasl-plain
     nautilus
     ncdu
     nodejs
@@ -49,7 +48,7 @@ function install-packages {
     plymouth-theme-spinner
     python3
     python3-pip
-    rclone
+    rclone fuse
     ripgrep
     rsync
     sdcv

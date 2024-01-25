@@ -86,13 +86,12 @@ function install-packages {
     bsd-mailx
     certbot
     cron
-    fuse
     git
     man-db
     msmtp-mta
     ncdu
     nginx-light
-    rclone
+    rclone fuse
     rss2email
     rsync
     tmux
