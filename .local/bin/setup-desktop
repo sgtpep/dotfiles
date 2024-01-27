@@ -108,10 +108,6 @@ function install-facetimehd-firmware {
   cd -
 }
 
-function install-google-chrome {
-  rpm -q google-chrome-stable > /dev/null || sudo dnf -y install https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
-}
-
 function install-npm-completion {
   local path=~/.local/share/bash-completion/completions/npm
   [[ ! -f $path ]] || return 0
@@ -137,6 +133,21 @@ function install-pip-packages {
   done
 }
 
+function install-url-packages {
+  local -A names=(
+    [epson-inkjet-printer-escpr2]=https://download3.ebz.epson.net/dsc/f/03/00/15/33/93/53aa19d5386a348e0096bd6cee5a1e2fa42c0c7f/epson-inkjet-printer-escpr2-1.2.9-1.x86_64.rpm
+    [google-chrome-stable]=https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+  )
+
+  local name
+  for name in "${!names[@]}"; do
+    ! rpm -q "$name" > /dev/null || continue
+
+    local url=${names[$name]}
+    sudo dnf -y install "$url"
+  done
+}
+
 function install-dependencies {
   enable-rpm-fusion
   install-packages
@@ -144,9 +155,17 @@ function install-dependencies {
 
   install-copr-packages
   install-facetimehd-firmware
-  install-google-chrome
   install-npm-completion
   install-pip-packages
+  install-url-packages
+}
+
+function add-printer {
+  local name=EPSON_ET-3710_Series
+  ! lpstat -p "$name" &>/dev/null || return 0
+
+  sudo lpadmin -m lsb/usr/epson-inkjet-printer-escpr2/Epson/Epson-ET-3710_Series-epson-inkjet-printer-escpr2.ppd.gz -p "$name" -v ipps://EPSON%20ET-3710%20Series._ipps._tcp.local/ -E
+  sudo lpadmin -d "$name"
 }
 
 function configure-gdm {
@@ -335,6 +354,7 @@ function turn-off-bluetooth {
 }
 
 function configure-system {
+  add-printer
   configure-gdm
   configure-grub
   disable-lid-wakeup
