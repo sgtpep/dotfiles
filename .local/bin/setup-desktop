@@ -481,12 +481,12 @@ function harden-bash-history {
   sudo chattr +a "$path"
 }
 
-function hide-waydroid-icons {
+function hide-desktop-entries {
   local path=~/.local/share/applications
   mkdir -p "$path"
 
   local name
-  for name in waydroid.{com.android.{calculator2,camera2,contacts,deskclock,documentsui,gallery3d,inputmethod.latin,settings},org.lineageos.{eleven,etar,jelly,recorder}}; do
+  for name in gvim htop org.codeberg.dnkl.foot{-server,client} org.gnome.Tour scrcpy-console vifm waydroid.{com.android.{calculator2,camera2,contacts,deskclock,documentsui,gallery3d,inputmethod.latin,settings},org.lineageos.{eleven,etar,jelly,recorder}}; do
     truncate -s 0 "$path"/"$name".desktop
   done
 }
@@ -511,7 +511,7 @@ function setup-home {
   disable-app-folders
   download-dictionaries
   harden-bash-history
-  hide-waydroid-icons
+  hide-desktop-entries
   import-gpg-key
 }
 
