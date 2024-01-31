@@ -229,7 +229,7 @@ function set-gsettings {
   local command=("${base_command[@]}" org.gnome.desktop.input-sources)
   "${command[@]}" per-window true
   "${command[@]}" sources "[('xkb', 'us'), ('xkb', 'ru')]"
-  "${command[@]}" xkb-options "['altwin:swap_alt_win', 'caps:ctrl_modifier', 'grp:rshift_toggle', 'lv3:switch']"
+  "${command[@]}" xkb-options "['altwin:swap_alt_win', 'caps:ctrl_modifier', 'grp:rshift_toggle', 'grp:rwin_switch', 'lv3:ralt_switch', 'misc:typo']"
 
   local command=("${base_command[@]}" org.gnome.desktop.interface)
   "${command[@]}" cursor-blink false
