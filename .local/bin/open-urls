@@ -1,9 +1,16 @@
 #!/bin/bash
 set -eu
 
+lock=/tmp/${0##*/}
 if [[ ${FLOCK-} != $0 ]]; then
-  path=/tmp/${0##*/}
-  FLOCK=$0 exec flock "$path" "$SHELL" -"$-" "$0" "$@"
+  FLOCK=$0 exec flock "$lock" "$SHELL" -"$-" "$0" "$@"
+else
+  function on-exit {
+    local status=$?
+    rm -f "$lock"
+    return "$status"
+  }
+  trap on-exit EXIT
 fi
 
 command=(chromium-browser)
