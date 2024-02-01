@@ -305,7 +305,7 @@ function set-gsettings {
   "${command[@]}" ambient-enabled false
   "${command[@]}" idle-dim false
   "${command[@]}" sleep-inactive-ac-type nothing
-  "${command[@]}" sleep-inactive-battery-timeout 300
+  "${command[@]}" sleep-inactive-battery-type nothing
 
   local command=("${base_command[@]}" org.gnome.shell)
   "${command[@]}" enabled-extensions "['customizations', 'user-theme@gnome-shell-extensions.gcampax.github.com']"
