@@ -53,8 +53,8 @@ def run_main_loop():
 def main():
     bus = get_session_bus()
     add_idle_monitor(bus, timeout=3 * minute, on_idle=lambda idle: set_power_save_mode(bus, 1 if idle else 0))
-    add_idle_monitor(bus, timeout=5 * minute, on_idle=lambda idle: idle and suspend())
-    add_idle_monitor(bus, timeout=60 * minute, on_idle=lambda idle: idle and not is_charginig() and stop_waydroid())
+    add_idle_monitor(bus, timeout=5 * minute, on_idle=lambda idle: idle and not is_charging() and suspend())
+    add_idle_monitor(bus, timeout=60 * minute, on_idle=lambda idle: idle and stop_waydroid())
 
     run_main_loop()
 
