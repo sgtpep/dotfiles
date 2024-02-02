@@ -21,6 +21,7 @@ nnoremap <silent> E :edit<CR>
 nnoremap <silent> gd :cd ~/Downloads<CR>
 nnoremap <silent> gh :cd ~<CR>
 nnoremap <silent> gm :cd /run/media/$USER<CR>
+nnoremap yd :!echo -n %f:p:h | wl-copy<CR>
 nnoremap yn :!echo -n %f | wl-copy<CR>
 nnoremap yp :!echo -n %f:p | wl-copy<CR>
 nnoremap q ZQ
