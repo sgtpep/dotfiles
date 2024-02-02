@@ -234,6 +234,7 @@ function set-gsettings {
   local command=("${base_command[@]}" org.gnome.desktop.interface)
   "${command[@]}" cursor-blink false
   "${command[@]}" enable-animations false
+  "${command[@]}" overlay-scrolling false
 
   local command=("${base_command[@]}" org.gnome.desktop.notifications)
   "${command[@]}" show-in-lock-screen false
