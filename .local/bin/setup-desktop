@@ -319,6 +319,14 @@ function set-gsettings {
   local command=("${base_command[@]}" org.gnome.shell.keybindings)
   "${command[@]}" switch-to-application-1 "['<Alt><Ctrl>t']"
   "${command[@]}" switch-to-application-2 "['<Alt><Ctrl>w']"
+
+  local command=("${base_command[@]}" org.gtk.Settings.FileChooser)
+  "${command[@]}" window-position '(0, 0)'
+  "${command[@]}" window-size '(1366, 721)'
+
+  local command=("${base_command[@]}" org.gtk.gtk4.Settings.FileChooser)
+  "${command[@]}" window-position '(0, 0)'
+  "${command[@]}" window-size '(1366, 768)'
 }
 
 function set-hostname {
