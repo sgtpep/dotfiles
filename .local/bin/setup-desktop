@@ -343,7 +343,7 @@ function set-plymouth-theme {
 
 function setup-waydroid {
   local url=https://ota.waydro.id
-  ls /var/lib/waydroid/images/{system,vendor}.img &> /dev/null || sudo waydroid init -c "$url"/system -v "$url"/vendor
+  ls /var/lib/waydroid/images/{system,vendor}.img &> /dev/null || sudo waydroid init -c "$url"/system -s GAPPS -v "$url"/vendor
 
   local line=qemu.hw.mainkeys=1
   local path=/var/lib/waydroid/waydroid_base.prop
@@ -495,7 +495,7 @@ function hide-desktop-entries {
   mkdir -p "$path"
 
   local name
-  for name in gvim htop org.codeberg.dnkl.foot{-server,client} org.gnome.Tour scrcpy-console vifm waydroid.{com.android.{calculator2,camera2,contacts,deskclock,documentsui,gallery3d,inputmethod.latin,settings},org.lineageos.{eleven,etar,jelly,recorder}}; do
+  for name in gvim htop org.codeberg.dnkl.foot{-server,client} org.gnome.Tour scrcpy-console vifm waydroid.{com.android.{calculator2,camera2,contacts,deskclock,documentsui,gallery3d,inputmethod.latin,settings,vending},org.lineageos.{eleven,etar,jelly,recorder}}; do
     truncate -s 0 "$path"/"$name".desktop
   done
 }
