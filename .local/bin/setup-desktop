@@ -495,7 +495,7 @@ function hide-desktop-entries {
   mkdir -p "$path"
 
   local name
-  for name in gvim htop org.codeberg.dnkl.foot{-server,client} org.gnome.Tour scrcpy-console vifm waydroid.{com.android.{calculator2,camera2,contacts,deskclock,documentsui,gallery3d,inputmethod.latin,settings,vending},org.lineageos.{eleven,etar,jelly,recorder}}; do
+  for name in gvim htop org.codeberg.dnkl.foot{-server,client} org.gnome.Tour scrcpy-console vifm waydroid.{com.android.{calculator2,camera2,contacts,deskclock,documentsui,gallery3d,inputmethod.latin,settings,vending},org.adaway,org.lineageos.{eleven,etar,jelly,recorder}}; do
     truncate -s 0 "$path"/"$name".desktop
   done
 }
