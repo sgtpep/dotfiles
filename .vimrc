@@ -4,7 +4,7 @@ function s:configure_filetypes()
   autocmd BufNewFile,BufRead *.ts,*.tsx setlocal filetype=javascript
 
   autocmd FileType * let [&l:formatoptions, &l:textwidth] = [&g:formatoptions, &g:textwidth]
-  autocmd FileType gitcommit,mail if getline(0, 1) == [''] | startinsert | redraw! | endif
+  autocmd FileType gitcommit,mail if getline(0, 1) == [''] | startinsert | redraw! | redraw! | endif
   autocmd FileType mail setlocal formatoptions+=w textwidth=72
 endfunction
 
