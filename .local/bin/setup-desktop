@@ -211,6 +211,18 @@ function fix-battery-state {
   sudo tee /etc/udev/rules.d/50-power-supply.rules > /dev/null <<< $'SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_ONLINE}=="[01]", RUN+="/bin/sh -c \'sleep 3; systemctl restart upower\'"'
 }
 
+function fix-facetimehd {
+  local name=fix-facetimehd.service
+  sudo tee /etc/systemd/system/"$name" > /dev/null << \EOF
+[Service]
+ExecStart=/bin/sh -c 'rmmod facetimehd; modprobe facetimehd'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  [[ -h /etc/systemd/system/default.target.wants/$name ]] || sudo systemctl enable "$name"
+}
+
 function set-graphical-target {
   local name=graphical.target
   local output=$(readlink /etc/systemd/system/default.target)
@@ -370,6 +382,7 @@ function configure-system {
   enable-dnf-automatic
   fix-adb-permissions
   fix-battery-state
+  fix-facetimehd
   set-graphical-target
   set-gsettings
   set-hostname
