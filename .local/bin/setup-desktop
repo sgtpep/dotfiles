@@ -526,6 +526,12 @@ function import-gpg-key {
   chmod 700 "$path"
 }
 
+function sort-downloads-directory {
+  local command=(gio set ~/Downloads)
+  "${command[@]}" metadata::nautilus-icon-view-sort-by date_modified
+  "${command[@]}" metadata::nautilus-icon-view-sort-reversed true
+}
+
 function setup-home {
   clone-repositories
   copy-netrc
@@ -535,6 +541,7 @@ function setup-home {
   harden-bash-history
   hide-desktop-entries
   import-gpg-key
+  sort-downloads-directory
 }
 
 function main {
