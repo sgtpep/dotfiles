@@ -178,10 +178,15 @@ endfunction
 
 function s:update_path()
   if isdirectory('.git')
-    let output = systemlist('git ls-files')
-    let paths = map(output, {_, path -> path =~ '/' ? fnamemodify(path, ':h') : ''})
-  else
+    if !filereadable('.git/.slow')
+      let output = systemlist('git ls-files')
+      let paths = map(output, {_, path -> path =~ '/' ? fnamemodify(path, ':h') : ''})
+    endif
+  elseif getcwd() !=# expand('~')
     let paths = systemlist('find -type d')
+  endif
+  if !exists('paths')
+    return
   endif
 
   call sort(paths)
@@ -352,7 +357,7 @@ function s:set_options()
   set wildignorecase
   set wildmode=list:longest,list:full
 
-  set clipboard=unnamedplus
+  let &clipboard = has('mac') ? 'unnamed' : 'unnamedplus'
   set iskeyword+=-
   set suffixesadd=.js,.jsx,.ts,.tsx
   set undofile

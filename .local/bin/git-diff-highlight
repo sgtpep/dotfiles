@@ -2,4 +2,7 @@
 set -eu
 
 name=DiffHighlight
-exec perl -I /usr/share/doc/git/contrib/diff-highlight -M"$name" -e "$name"'::highlight_stdin()'
+for path in {/usr/share/doc/git/contrib,/opt/homebrew/Cellar/git/*/share/git-core/contrib}/diff-highlight; do
+  [[ ! -d $path ]] || exec perl -I "$path" -M"$name" -e "$name"'::highlight_stdin()'
+done
+exit 1

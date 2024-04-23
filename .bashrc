@@ -23,10 +23,18 @@ history -a
 '
 
 PS1=$'$(
-  [[ -d $PWD/.git && $PWD != ~ ]] || exit 0
+  path=$PWD/.git
+  [[ -d $path && ! -f $path/.slow && $PWD != ~ ]] || exit 0
 
   command=__git_ps1
-  type -t "$command" > /dev/null || . /usr/share/git-core/contrib/completion/git-prompt.sh
+  if ! type -t "$command" > /dev/null; then
+    for path in {/usr/share/git-core/contrib/completion,/opt/homebrew/etc/bash_completion.d,/Library/Developer/CommandLineTools/usr/share/git-core}/git-prompt.sh; do
+      [[ -f $path ]] || continue
+
+      . "$path"
+      break
+    done
+  fi
   "$command" \'(%s) \'
 )\W $ '
 
