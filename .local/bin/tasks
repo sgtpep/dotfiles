@@ -7,7 +7,7 @@ if [[ ! $@ ]]; then
     [[ $output ]] || continue
 
     weekday=$(date -d "$day day" +%A)
-    printf '%s\n%s\n\n' "$weekday" "$output"
+    printf '%s\n\n%s\n\n' "$weekday" "$output"
   done
   exit
 fi
