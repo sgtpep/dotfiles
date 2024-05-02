@@ -1,20 +1,31 @@
 #!/usr/bin/env python
+from atexit import register
+from dbus import Interface, SessionBus
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import GLib
-from os import system
-import dbus
-import subprocess
+from os import remove, system
+from os.path import basename, isfile
+from subprocess import run
+from sys import argv, exit
+from tempfile import gettempdir
 
+lock_path = None
 minute = 60 * 1000
+
+def get_lock_path():
+    temp = gettempdir()
+    name = basename(argv[0])
+    path = f'{temp}/{name}.lock'
+    return path
 
 def get_session_bus():
     DBusGMainLoop(set_as_default=True)
-    bus = dbus.SessionBus()
+    bus = SessionBus()
     return bus
 
-def add_idle_monitor(bus, timeout, on_idle):
+def add_idle_monitor(bus, lock_path, timeout, on_idle):
     object = bus.get_object('org.gnome.Mutter.IdleMonitor', '/org/gnome/Mutter/IdleMonitor/Core')
-    interface = dbus.Interface(object, 'org.gnome.Mutter.IdleMonitor')
+    interface = Interface(object, 'org.gnome.Mutter.IdleMonitor')
 
     idle_id = interface.AddIdleWatch(timeout)
     active_id = None
@@ -24,7 +35,8 @@ def add_idle_monitor(bus, timeout, on_idle):
         power_save_mode = None
         if id == idle_id:
             active_id = interface.AddUserActiveWatch()
-            on_idle(True)
+            if not isfile(lock_path):
+                on_idle(True)
         elif id == active_id:
             on_idle(False)
 
@@ -39,22 +51,30 @@ def is_charging():
     return not is_discharging
 
 def suspend():
-    system('systemctl suspend')
+    run('systemctl suspend', shell=True)
 
 def stop_waydroid():
-    process = subprocess.run('lxc-info -Hs -P /var/lib/waydroid/lxc -n waydroid', capture_output=True, encoding='utf8', shell=True)
+    process = run('lxc-info -Hs -P /var/lib/waydroid/lxc -n waydroid', capture_output=True, encoding='utf8', shell=True)
     if process.stdout != 'STOPPED\n':
-        subprocess.run('waydroid session stop', shell=True)
+        run('waydroid session stop', shell=True)
 
 def run_main_loop():
     loop = GLib.MainLoop()
     loop.run()
 
 def main():
+    lock_path = get_lock_path()
+
+    if len(argv) > 1 and argv[1] == 'lock':
+        open(lock_path, 'w')
+        register(lambda: remove(lock_path))
+        run_main_loop()
+        exit()
+
     bus = get_session_bus()
-    add_idle_monitor(bus, timeout=3 * minute, on_idle=lambda idle: set_power_save_mode(bus, 1 if idle else 0))
-    add_idle_monitor(bus, timeout=5 * minute, on_idle=lambda idle: idle and not is_charging() and suspend())
-    add_idle_monitor(bus, timeout=60 * minute, on_idle=lambda idle: idle and stop_waydroid())
+    add_idle_monitor(bus, lock_path, timeout=3 * minute, on_idle=lambda idle: set_power_save_mode(bus, 1 if idle else 0))
+    add_idle_monitor(bus, lock_path, timeout=5 * minute, on_idle=lambda idle: idle and not is_charging() and suspend())
+    add_idle_monitor(bus, lock_path, timeout=60 * minute, on_idle=lambda idle: idle and stop_waydroid())
 
     run_main_loop()
 
