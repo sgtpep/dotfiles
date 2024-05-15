@@ -219,6 +219,10 @@ function s:format_code()
   let input = getline(1, '$')
   let output = systemlist(command, input)
 
+  while len(output) && stridx(output[0], '[warn] ') == 0
+    let output = output[1:]
+  endwhile
+
   if v:shell_error
     echo join(output, "\n")
     echo get(output, 0, '')
