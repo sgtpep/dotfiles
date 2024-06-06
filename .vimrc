@@ -177,6 +177,10 @@ function s:comment_code() range
 endfunction
 
 function s:update_path()
+  if !empty(argv())
+    return
+  endif
+
   if isdirectory('.git')
     if !filereadable('.git/.slow')
       let output = systemlist('git ls-files')
