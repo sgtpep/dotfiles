@@ -183,7 +183,7 @@ function s:update_path()
       let paths = map(output, {_, path -> path =~ '/' ? fnamemodify(path, ':h') : ''})
     endif
   elseif getcwd() !=# expand('~')
-    let paths = systemlist('find -type d')
+    let paths = systemlist('find -type d ! \( -name node_modules -prune \)')
   endif
   if !exists('paths')
     return
