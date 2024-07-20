@@ -117,7 +117,7 @@ function main {
 
   local input=$path
 
-  if [[ $# > 1 ]]; then
+  if [[ $@ ]]; then
     local cover=$1
     shift
     local ranges=("$@")
