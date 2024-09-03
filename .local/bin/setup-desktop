@@ -203,6 +203,10 @@ function enable-dnf-automatic {
   [[ -h /etc/systemd/system/timers.target.wants/$name ]] || sudo systemctl enable "$name"
 }
 
+function enable-ntp {
+  sudo timedatectl set-ntp true
+}
+
 function fix-adb-permissions {
   sudo tee /etc/udev/rules.d/50-adb.rules > /dev/null <<< 'SUBSYSTEM=="usb", ATTR{idVendor}=="0e8d", MODE="0666", GROUP="plugdev"'
 }
@@ -380,6 +384,7 @@ function configure-system {
   configure-grub
   disable-lid-wakeup
   enable-dnf-automatic
+  enable-ntp
   fix-adb-permissions
   fix-battery-state
   fix-facetimehd

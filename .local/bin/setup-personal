@@ -195,8 +195,8 @@ function schedule-generate-gallery {
 
   sudo tee /etc/cron.d/"$name" > /dev/null << EOF
 PATH=/usr/bin:/bin:$HOME/.local/bin
-0 0 */5 * * $USER $name $config/gallery/config ~/www/gallery
-0 0 */5 * * $USER $name $config/*-gallery/config ~/www/*-gallery
+9 0 */5 * * $USER $name $config/gallery/config ~/www/gallery
+9 0 */5 * * $USER $name $config/*-gallery/config ~/www/*-gallery
 EOF
 }
 
