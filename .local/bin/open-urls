@@ -3,7 +3,7 @@ set -eu
 
 lock=/tmp/${0##*/}
 if [[ ${FLOCK-} != $0 ]]; then
-  FLOCK=$0 exec flock "$lock" "$SHELL" -"$-" "$0" "$@"
+  FLOCK=$0 exec flock "$lock" bash -"$-" "$0" "$@"
 else
   function on-exit {
     local status=$?
