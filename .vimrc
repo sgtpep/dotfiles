@@ -220,7 +220,7 @@ function s:format_code()
   let offset = abs(line2byte(line)) + column - 2
   let path = expand('%')
   let command = printf('NODE_NO_WARNINGS=1 %s --cursor-offset=%d --ignore-path= --stdin-filepath=%s', executable, offset, shellescape(path))
-  let input = getline(1, '$')
+  let input = getline(1, '$') + ['']
   let output = systemlist(command, input)
 
   while len(output) && stridx(output[0], '[warn] ') == 0
