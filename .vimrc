@@ -278,17 +278,17 @@ function s:map_keys()
   nnoremap <Leader>g :grep<Space>
   nnoremap <Leader>u :call <SID>append_url()<CR>
   nnoremap <silent> <Leader>/ :call <SID>comment_code()<CR>
-  nnoremap <silent> <Leader>D :bdelete!<CR>
   nnoremap <silent> <Leader>F :call <SID>update_path()<CR>
   nnoremap <silent> <Leader>N :bnext<CR>
   nnoremap <silent> <Leader>P :bprevious<CR>
   nnoremap <silent> <Leader>R :silent! mkview<CR>:edit!<CR>:silent! loadview<CR>
+  nnoremap <silent> <Leader>d :bdelete<CR>:redraw!<CR>
   nnoremap <silent> <Leader>h :setlocal hlsearch!<CR>
   nnoremap <silent> <Leader>i :set invpaste<CR>
   nnoremap <silent> <Leader>n :cnext<CR>
   nnoremap <silent> <Leader>p :cprevious<CR>
   nnoremap <silent> <Leader>q :call <SID>toggle_quickfix()<CR>
-  nnoremap <silent> <Leader>r :call <SID>format_code()<CR>
+  nnoremap <silent> <Leader>r :silent! mkview<CR>:call <SID>format_code()<CR>:silent! loadview<CR>
   nnoremap <silent> <Leader>y :call system('wl-copy', expand('%'))<CR>
   nnoremap Q <Nop>
   vnoremap <silent> <Leader>/ :call <SID>comment_code()<CR>
