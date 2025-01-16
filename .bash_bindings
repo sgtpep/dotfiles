@@ -18,8 +18,8 @@ bind '"\C-gO": "\C-e\C-ugit restore -p "'
 bind '"\C-gp": "\C-e\C-ugit push \n"'
 bind '"\C-gP": "\C-e\C-ugit push -f \n"'
 
-bind '"\C-gr": "\C-e\C-ugit reset -p HEAD \n"'
-bind '"\C-gR": "\C-e\C-ugit reset -p HEAD "'
+bind '"\C-gr": "\C-e\C-ugit restore -Sp \n"'
+bind '"\C-gR": "\C-e\C-ugit restore -Sp "'
 
 bind '"\C-gs": "\C-e\C-ugit status \n"'
 bind '"\C-gS": "\C-e\C-ugit stash list -p \n"'
