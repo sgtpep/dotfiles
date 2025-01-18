@@ -212,6 +212,7 @@ function s:toggle_quickfix()
 endfunction
 
 function s:format_code()
+  silent! mkview
   update
 
   let path = 'node_modules/.bin/prettier'
@@ -236,28 +237,31 @@ function s:format_code()
     if len(match)
       call cursor(match[1], match[2])
     endif
-  else
-    let [lines, offset] = output != input ? [output[:-2], output[-1]] : [output, offset]
-    if lines !=# input
-      let view = winsaveview()
 
-      call setline(1, lines)
+    return
+  endif
 
-      let number = len(lines) + 1
-      let expression = printf('%d,$delete _', number)
-      silent! execute expression
+  let [lines, offset] = output != input ? [output[:-2], output[-1]] : [output, offset]
+  if lines !=# input
+    let view = winsaveview()
 
-      call winrestview(view)
+    call setline(1, lines)
 
-      if offset != -1
-        let number = offset + 1
-        let expression = printf('goto %d', number)
-        execute expression
-      endif
+    let number = len(lines) + 1
+    let expression = printf('%d,$delete _', number)
+    silent! execute expression
+
+    call winrestview(view)
+
+    if offset != -1
+      let number = offset + 1
+      let expression = printf('goto %d', number)
+      execute expression
     endif
   endif
 
   update
+  silent! loadview
 endfunction
 
 function s:map_keys()
@@ -288,7 +292,7 @@ function s:map_keys()
   nnoremap <silent> <Leader>n :cnext<CR>
   nnoremap <silent> <Leader>p :cprevious<CR>
   nnoremap <silent> <Leader>q :call <SID>toggle_quickfix()<CR>
-  nnoremap <silent> <Leader>r :silent! mkview<CR>:call <SID>format_code()<CR>:silent! loadview<CR>
+  nnoremap <silent> <Leader>r :call <SID>format_code()<CR>
   nnoremap <silent> <Leader>y :call system('wl-copy', expand('%'))<CR>
   nnoremap Q <Nop>
   vnoremap <silent> <Leader>/ :call <SID>comment_code()<CR>
