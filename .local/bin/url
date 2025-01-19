@@ -6,7 +6,7 @@ input=$1
 url=$(sed 's/^\s\+\|\s\+$//g' <<< "$input")
 [[ $url =~ ^https?://[^[:space:]]+$ ]]
 
-user_agent='Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0'
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
 title=$(
   curl -ks -A "$user_agent" -H 'Accept-Encoding: gzip' "$url" | \
   gunzip -f | \
