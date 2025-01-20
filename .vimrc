@@ -212,7 +212,6 @@ function s:toggle_quickfix()
 endfunction
 
 function s:format_code()
-  silent! mkview
   update
 
   let path = 'node_modules/.bin/prettier'
@@ -261,7 +260,6 @@ function s:format_code()
   endif
 
   update
-  silent! loadview
 endfunction
 
 function s:map_keys()
@@ -351,6 +349,7 @@ function s:set_options()
   set shiftwidth=2
   set smartindent
   set softtabstop=2
+  set tabstop=2
 
   set grepformat=%f:%l:%c:%m
   set grepprg=rg\ --vimgrep
