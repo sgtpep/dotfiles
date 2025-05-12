@@ -101,6 +101,18 @@ function install-packages {
   dpkg -s "${names[@]}" &> /dev/null || sudo DEBIAN_FRONTEND=noninteractive apt -y install "${names[@]}"
 }
 
+function create-swap {
+  local output=$(sudo swapon --show)
+  [[ ! $output ]] || return 0
+
+  local path=/swapfile
+  sudo fallocate -l 1G "$path"
+  sudo chmod 600 "$path"
+  sudo mkswap "$path"
+  sudo swapon "$path"
+  sudo tee -a /etc/fstab > /dev/null <<< "$path none swap sw 0 0"
+}
+
 function configure-hostname {
   sudo hostnamectl hostname "$hostname"
 }
@@ -293,6 +305,7 @@ function setup-nginx {
 }
 
 function setup-system {
+  create-swap
   configure-hostname
   configure-media
   configure-msmtp
