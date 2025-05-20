@@ -13,7 +13,6 @@ alias rm='rm -I'
 alias serve='python -m http.server'
 alias sshuttle='sshuttle -r personal --dns 0/0'
 alias sudo='sudo '
-alias unmount='gio mount -e /run/media/"$USER"/*'
 alias watch='watch '
 
 function less {

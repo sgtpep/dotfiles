@@ -219,7 +219,7 @@ function s:format_code()
   let [line, column] = [line('.'), col('.')]
   let offset = abs(line2byte(line)) + column - 2
   let path = expand('%')
-  let command = printf('NODE_NO_WARNINGS=1 %s --cursor-offset=%d --ignore-path= --stdin-filepath=%s', executable, offset, shellescape(path))
+  let command = printf('NODE_NO_WARNINGS=true %s --cursor-offset=%d --ignore-path= --stdin-filepath=%s', executable, offset, shellescape(path))
   let input = getline(1, '$') + ['']
   let output = systemlist(command, input)
 
@@ -281,20 +281,22 @@ function s:map_keys()
   nnoremap <Leader>u :call <SID>append_url()<CR>
   nnoremap <silent> <Leader>/ :call <SID>comment_code()<CR>
   nnoremap <silent> <Leader>F :call <SID>update_path()<CR>
-  nnoremap <silent> <Leader>N :bnext<CR>
-  nnoremap <silent> <Leader>P :bprevious<CR>
+  nnoremap <silent> <Leader>N :execute empty(getqflist()) ? 'bprevious' : 'cprevious'<CR>
+  nnoremap <silent> <Leader>P :let @" = system('wl-paste -n')<CR>P
   nnoremap <silent> <Leader>R :silent! mkview<CR>:edit!<CR>:silent! loadview<CR>
+  nnoremap <silent> <Leader>Y :call system('wl-copy', expand('%'))<CR>
   nnoremap <silent> <Leader>d :bdelete<CR>:redraw!<CR>
   nnoremap <silent> <Leader>h :setlocal hlsearch!<CR>
   nnoremap <silent> <Leader>i :set invpaste<CR>
-  nnoremap <silent> <Leader>n :cnext<CR>
-  nnoremap <silent> <Leader>p :cprevious<CR>
+  nnoremap <silent> <Leader>n :execute empty(getqflist()) ? 'bnext' : 'cnext'<CR>
+  nnoremap <silent> <Leader>p :let @" = system('wl-paste -n')<CR>p
   nnoremap <silent> <Leader>q :call <SID>toggle_quickfix()<CR>
   nnoremap <silent> <Leader>r :call <SID>format_code()<CR>
-  nnoremap <silent> <Leader>y :call system('wl-copy', expand('%'))<CR>
   nnoremap Q <Nop>
   vnoremap <silent> <Leader>/ :call <SID>comment_code()<CR>
+  vnoremap <silent> <Leader>p :<C-U>let @" = system('wl-paste -n')<CR>gvp
   vnoremap <silent> <Leader>s :sort<CR>
+  vnoremap <silent> <Leader>y y:call system('wl-copy', @")<CR>
 endfunction
 
 function s:patch_matchparen()

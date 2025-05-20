@@ -1,0 +1,11 @@
+[general]
+size = fullscreen
+
+[viewer]
+window = #000000
+
+[gallery]
+window = #000000
+
+[info]
+show = no

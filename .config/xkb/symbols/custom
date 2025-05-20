@@ -1,0 +1,19 @@
+partial alphanumeric_keys
+xkb_symbols "custom" {
+  key <I166> {[ XF86Back, F1 ]};
+  key <I181> {[ XF86Reload, F2 ]};
+  key <I380> {[ XF86FullScreen, F3 ]};
+  key <I128> {[ XF86LaunchA, F4 ]};
+  key <I107> {[ NoSymbol, F5 ]};
+  key <I232> {[ XF86MonBrightnessDown, F6 ]};
+  key <I233> {[ XF86MonBrightnessUp, F7 ]};
+  key <I121> {[ XF86AudioMute, F8 ]};
+  key <I122> {[ XF86AudioLowerVolume, F9 ]};
+  key <I123> {[ XF86AudioRaiseVolume, F10 ]};
+
+  key <BKSP> {[ BackSpace, BackSpace, Delete ]};
+  key <UP> {[ Up, Up, Prior ]};
+  key <DOWN> {[ Down, Down, Next ]};
+  key <LEFT> {[ Left, Left, Home ]};
+  key <RGHT> {[ Right, Right, End ]};
+};

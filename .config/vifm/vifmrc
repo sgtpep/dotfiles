@@ -14,10 +14,11 @@ filetype <application/gzip,application/x-tar> tar -x -f %f
 filetype <application/zip> unzip -- %f
 fileviewer <application/gzip,application/x-tar> tar -f %f --list
 fileviewer <application/zip> unzip -l -- %f
-fileviewer <audio/*,image/*,video/*> file -b -- %f
+filextype <image/*> bash -c $'set -eu; readarray -t paths < <(find "${1%%/*}" -maxdepth 1 -type f -iregex \'.*\.\(gif\|jpe?g\|png\)\' | LANG=C sort); exec swayimg "$1" "${paths[@]}"' -- %c:p %i &
 filextype <*> gio open %f %i &
 
 nnoremap <silent> E :edit<CR>
+nnoremap <silent> gM :cd ~/.gvfs<CR>
 nnoremap <silent> gd :cd ~/Downloads<CR>
 nnoremap <silent> gh :cd ~<CR>
 nnoremap <silent> gm :cd /run/media/$USER<CR>

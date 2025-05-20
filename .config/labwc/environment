@@ -1,0 +1,3 @@
+XKB_DEFAULT_MODEL=custom
+XKB_DEFAULT_LAYOUT=us,ru
+XKB_DEFAULT_OPTIONS=ctrl:swap_lwin_lctl,grp:rctrl_switch,grp:rshift_toggle,lv3:ralt_switch,misc:typo

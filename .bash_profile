@@ -1,3 +1,4 @@
+export CHROMIUM_USER_FLAGS='--animation-duration-scale=0 --disable-smooth-scrolling --ozone-platform=wayland'
 export EDITOR=vim
 export LESS='-FKRXi -j 3'
 export MANWIDTH=80
@@ -14,3 +15,5 @@ path=~/.bash_profile_local
 unset path
 
 . ~/.bashrc
+
+[[ $TERM != linux || $XDG_VTNR != 1 ]] || exec labwc &> ~/.local/state/labwc.log

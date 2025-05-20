@@ -13,62 +13,72 @@ function enable-rpm-fusion {
 function install-packages {
   local names=(
     ImageMagick
+    acpi
+    alsa-sof-firmware alsa-ucm
     android-tools
     bash
     bash-completion
-    broadcom-wl
+    brightnessctl
     bzip2
     calc
     chromium
+    clipman
     cups
     curl
     default-fonts-core-emoji
     dejavu-sans-mono-fonts
-    dnf-automatic
-    eog
+    dnf5-plugin-automatic
     ffmpeg
+    file
+    findutils
     foot
     gimp
     git
+    glib2
     gnome-disk-utility
-    gnome-shell
-    gnome-shell-extension-user-theme
     gnupg2
+    grep
+    gvfs
+    gvfs-fuse
     gvfs-mtp
     gzip
     htop
+    labwc
+    liberation-fonts-all
+    libnotify
+    mako
     man-db
-    mutt cyrus-sasl-plain
-    nautilus
+    mutt
     ncdu
     nodejs
+    nodejs-npm
     openssh
     pass
     pass-otp
     perl-Image-ExifTool
-    plymouth-theme-spinner
+    pulseaudio-utils
     python3
     python3-pip
     rclone fuse
     ripgrep
     rsync
     sdcv
-    simple-scan
+    seatd
     sqlite
     sshuttle
-    sushi
+    swayidle
+    swayimg
     tar
     tmux
     unzip
     util-linux
     vifm
-    vim-X11
-    vlc
+    vim-enhanced
     w3m
-    waydroid
     which
-    wireplumber
     wl-clipboard
+    wlopm
+    wlr-randr
     zip
   )
   rpm -q "${names[@]}" > /dev/null || sudo dnf -y install "${names[@]}"
@@ -79,64 +89,9 @@ function remove-packages {
   ! rpm -q "${names[@]}" > /dev/null || sudo dnf -y remove "${names[@]}"
 }
 
-function install-copr-packages {
-  declare -A names=(
-    [facetimehd]=frgt10/facetimehd-dkms
-    [scrcpy]=zeno/scrcpy
-  )
-
-  local name
-  for name in "${!names[@]}"; do
-    ! rpm -q "$name" > /dev/null || continue
-
-    local repository=${names[$name]}
-    sudo dnf -y copr enable "$repository"
-    sudo dnf -y install "$name"
-  done
-}
-
-function install-facetimehd-firmware {
-  [[ ! -f /usr/lib/firmware/facetimehd/firmware.bin ]] || return 0
-
-  local path=/tmp/facetimehd-firmware
-  mkdir -p "$path"
-  curl https://codeload.github.com/patjak/facetimehd-firmware/tar.gz/refs/heads/master | tar -xz -C "$path" --strip-components=1
-
-  cd "$path"
-  sha256sum -c <<< '97a01f5e1100dac99b11c6d62dc30039362a7d89ba99a0305bcea19bab3f55ff Makefile'
-  make
-  sudo make install
-  cd -
-}
-
-function install-npm-completion {
-  local path=~/.local/share/bash-completion/completions/npm
-  [[ ! -f $path ]] || return 0
-
-  local directory=${path%/*}
-  mkdir -p "$directory"
-
-  PATH=~/.npm/bin:$PATH npm completion > "$path"
-}
-
-function install-pip-packages {
-  local names=(
-    magic_wormhole
-    pwdhash.py
-    yt_dlp
-  )
-
-  local name
-  for name in "${names[@]}"; do
-    local pip=~/.pip
-    local paths=("$pip"/lib/python*/site-packages/"$name"-*)
-    [[ -d ${paths[0]} ]] || PYTHONUSERBASE=$pip pip install --no-warn-script-location "$name"
-  done
-}
-
-function install-url-packages {
+function install-external-packages {
   local -A names=(
-    [epson-inkjet-printer-escpr2]=https://download3.ebz.epson.net/dsc/f/03/00/15/33/93/53aa19d5386a348e0096bd6cee5a1e2fa42c0c7f/epson-inkjet-printer-escpr2-1.2.9-1.x86_64.rpm
+    [epson-inkjet-printer-escpr2]=https://download3.ebz.epson.net/dsc/f/03/00/16/90/97/553047888938560dd4d73cae951613459e2a5d5d/epson-inkjet-printer-escpr2-1.2.31-1.x86_64.rpm
     [google-chrome-stable]=https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
   )
 
@@ -149,32 +104,35 @@ function install-url-packages {
   done
 }
 
+function install-pip-packages {
+  local names=(
+    magic_wormhole
+    pwdhash_py
+    yt_dlp
+  )
+
+  local name
+  for name in "${names[@]}"; do
+    local pip=~/.pip
+    local paths=("$pip"/lib/python*/site-packages/"$name"-*)
+    [[ -d ${paths[0]} ]] || PYTHONUSERBASE=$pip pip install --no-warn-script-location "$name"
+  done
+}
+
 function install-dependencies {
   enable-rpm-fusion
   install-packages
   remove-packages
 
-  install-copr-packages
-  install-facetimehd-firmware
-  install-npm-completion
+  install-external-packages
   install-pip-packages
-  install-url-packages
 }
 
-function add-printer {
-  local name=EPSON_ET-3710_Series
-  ! lpstat -p "$name" &>/dev/null || return 0
+function block-bluetooth {
+  local name=bluetooth
+  rfkill -o TYPE,SOFT | grep -q "^$name\s*unblocked$" || return 0
 
-  sudo lpadmin -m lsb/usr/epson-inkjet-printer-escpr2/Epson/Epson-ET-3710_Series-epson-inkjet-printer-escpr2.ppd.gz -p "$name" -v ipps://EPSON%20ET-3710%20Series._ipps._tcp.local/ -E
-  sudo lpadmin -d "$name"
-}
-
-function configure-gdm {
-  sudo tee /etc/gdm/custom.conf > /dev/null << EOF
-[daemon]
-AutomaticLogin=$USER
-AutomaticLoginEnable=True
-EOF
+  rfkill block "$name"
 }
 
 function configure-grub {
@@ -186,223 +144,89 @@ function configure-grub {
   md5sum -c --status <<< "$checksum" || sudo grub2-mkconfig -o /boot/grub2/grub.cfg
 }
 
-function disable-lid-wakeup {
-  local name=disable-lid-wakeup.service
-  sudo tee /etc/systemd/system/"$name" > /dev/null << \EOF
-[Service]
-Type=oneshot
-ExecStart=sh -c 'echo LID0 > /proc/acpi/wakeup'
-
-[Install]
-WantedBy=default.target
+function configure-power-key {
+  sudo tee /etc/systemd/logind.conf > /dev/null << \EOF
+[Login]
+HandlePowerKey=suspend
 EOF
-  [[ -h /etc/systemd/system/default.target.wants/$name ]] || sudo systemctl enable "$name"
+}
+
+function enable-autologin {
+  local path=/etc/systemd/system/getty@tty1.service.d
+  sudo mkdir -p "$path"
+  sudo tee "$path"/autologin.conf > /dev/null << EOF
+[Service]
+ExecStart=
+ExecStart=-/usr/sbin/agetty -a $USER %I
+EOF
 }
 
 function enable-dnf-automatic {
-  local name=dnf-automatic-install.timer
-  [[ -h /etc/systemd/system/timers.target.wants/$name ]] || sudo systemctl enable "$name"
-}
-
-function enable-ntp {
-  sudo timedatectl set-ntp true
-}
-
-function fix-adb-permissions {
-  sudo tee /etc/udev/rules.d/50-adb.rules > /dev/null <<< 'SUBSYSTEM=="usb", ATTR{idVendor}=="0e8d", MODE="0666", GROUP="plugdev"'
-}
-
-function fix-battery-state {
-  sudo tee /etc/udev/rules.d/50-power-supply.rules > /dev/null <<< $'SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_ONLINE}=="[01]", RUN+="/bin/sh -c \'sleep 3; systemctl restart upower\'"'
-}
-
-function fix-facetimehd {
-  local name=fix-facetimehd.service
-  sudo tee /etc/systemd/system/"$name" > /dev/null << \EOF
-[Service]
-ExecStart=/bin/sh -c 'rmmod facetimehd; modprobe facetimehd'
-
-[Install]
-WantedBy=multi-user.target
+  sudo tee /etc/dnf/automatic.conf > /dev/null << \EOF
+[commands]
+apply_updates = yes
 EOF
-  [[ -h /etc/systemd/system/default.target.wants/$name ]] || sudo systemctl enable "$name"
+
+  local name=dnf5-automatic.timer
+  [[ -h /etc/systemd/system/timers.target.wants/$name ]] || sudo systemctl enable --now "$name"
 }
 
-function set-graphical-target {
-  local name=graphical.target
-  local output=$(readlink /etc/systemd/system/default.target)
-  [[ $output == */$name ]] || sudo systemctl set-default "$name"
+function enable-seatd {
+  local name=seatd.service
+  [[ -h /etc/systemd/system/multi-user.target.wants/$name ]] || sudo systemctl enable --now "$name"
+
+  sudo usermod -a -G seat "$USER"
 }
 
-function set-gsettings {
-  local base_command=(gsettings set)
+function fix-audio {
+  sudo cp /lib/firmware/intel/sof-tplg/sof-adl-{max98360a,rt1019}-rt5682.tplg.xz
 
-  local command=("${base_command[@]}" org.gnome.Settings)
-  "${command[@]}" window-state '(980, 640, true)'
+  [[ ! -f /etc/wireplumber/wireplumber.conf.d/51-increase-headroom.conf ]] || return 0
 
-  local command=("${base_command[@]}" org.gnome.desktop.background)
-  "${command[@]}" primary-color black
+  local temp=/tmp
+  local name=chromebook-linux-audio
+  local path=$temp/$name
+  rm -fr "$path"
+  git -C "$temp" clone https://github.com/WeirdTreeThing/"$name".git
 
-  local command=("${base_command[@]}" org.gnome.desktop.input-sources)
-  "${command[@]}" per-window true
-  "${command[@]}" sources "[('xkb', 'us'), ('xkb', 'ru')]"
-  "${command[@]}" xkb-options "['altwin:swap_alt_win', 'caps:ctrl_modifier', 'grp:rshift_toggle', 'grp:rwin_switch', 'lv3:ralt_switch', 'misc:typo']"
-
-  local command=("${base_command[@]}" org.gnome.desktop.interface)
-  "${command[@]}" cursor-blink false
-  "${command[@]}" enable-animations false
-  "${command[@]}" overlay-scrolling false
-
-  local command=("${base_command[@]}" org.gnome.desktop.notifications)
-  "${command[@]}" show-in-lock-screen false
-
-  local command=("${base_command[@]}" org.gnome.desktop.peripherals.touchpad)
-  "${command[@]}" tap-to-click true
-
-  local command=("${base_command[@]}" org.gnome.desktop.privacy)
-  "${command[@]}" recent-files-max-age 30
-  "${command[@]}" remove-old-temp-files true
-  "${command[@]}" remove-old-trash-files true
-
-  local command=("${base_command[@]}" org.gnome.desktop.screensaver)
-  "${command[@]}" lock-enabled false
-
-  local command=("${base_command[@]}" org.gnome.desktop.search-providers)
-  "${command[@]}" disable-external true
-
-  local command=("${base_command[@]}" org.gnome.desktop.session)
-  "${command[@]}" idle-delay 0
-
-  local command=("${base_command[@]}" org.gnome.desktop.sound)
-  "${command[@]}" event-sounds false
-
-  local command=("${base_command[@]}" org.gnome.desktop.wm.keybindings)
-  "${command[@]}" close "['<Alt><Control>q']"
-  "${command[@]}" cycle-windows '[]'
-  "${command[@]}" minimize "['<Alt>Escape']"
-  "${command[@]}" panel-run-dialog "['<Alt><Control>r']"
-  "${command[@]}" switch-applications '[]'
-  "${command[@]}" switch-applications-backward '[]'
-  "${command[@]}" switch-group '[]'
-  "${command[@]}" switch-windows "['<Alt>Tab']"
-  "${command[@]}" switch-windows-backward "['<Alt><Shift>Tab']"
-
-  local command=("${base_command[@]}" org.gnome.desktop.wm.preferences)
-  "${command[@]}" num-workspaces 1
-
-  local command=("${base_command[@]}" org.gnome.eog.ui)
-  "${command[@]}" image-gallery true
-  "${command[@]}" sidebar false
-
-  local command=("${base_command[@]}" org.gnome.mutter)
-  "${command[@]}" center-new-windows true
-  "${command[@]}" check-alive-timeout 0
-  "${command[@]}" dynamic-workspaces false
-
-  local command=("${base_command[@]}" org.gnome.nautilus.preferences)
-  "${command[@]}" default-folder-viewer list-view
-
-  local command=("${base_command[@]}" org.gnome.nautilus.window-state)
-  "${command[@]}" maximized true
-
-  local command=("${base_command[@]}" org.gnome.settings-daemon.plugins.media-keys)
-  "${command[@]}" custom-keybindings "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']"
-  "${command[@]}" volume-down-quiet-static "['XF86AudioLowerVolume']"
-  "${command[@]}" volume-down-static "['']"
-  "${command[@]}" volume-mute-quiet-static "['']"
-  "${command[@]}" volume-mute-static "['']"
-  "${command[@]}" volume-up-quiet-static "['XF86AudioRaiseVolume']"
-  "${command[@]}" volume-up-static "['']"
-
-  local command=("${base_command[@]}" org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/)
-  "${command[@]}" binding 'AudioMute'
-  "${command[@]}" command 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 1'
-  "${command[@]}" name 'Mute volume'
-
-  local command=("${base_command[@]}" org.gnome.settings-daemon.plugins.power)
-  "${command[@]}" ambient-enabled false
-  "${command[@]}" idle-dim false
-  "${command[@]}" sleep-inactive-ac-type nothing
-  "${command[@]}" sleep-inactive-battery-type nothing
-
-  local command=("${base_command[@]}" org.gnome.shell)
-  "${command[@]}" enabled-extensions "['customizations', 'user-theme@gnome-shell-extensions.gcampax.github.com']"
-  "${command[@]}" favorite-apps "['org.codeberg.dnkl.foot.desktop', 'chromium-browser.desktop']"
-  "${command[@]}" welcome-dialog-last-shown-version 100
-
-  local command=("${base_command[@]}" org.gnome.shell.extensions.user-theme)
-  "${command[@]}" name customizations
-
-  local command=("${base_command[@]}" org.gnome.shell.keybindings)
-  "${command[@]}" switch-to-application-1 "['<Alt><Ctrl>t']"
-  "${command[@]}" switch-to-application-2 "['<Alt><Ctrl>w']"
-
-  local command=("${base_command[@]}" org.gtk.Settings.FileChooser)
-  "${command[@]}" window-position '(0, 0)'
-  "${command[@]}" window-size '(1366, 721)'
-
-  local command=("${base_command[@]}" org.gtk.gtk4.Settings.FileChooser)
-  "${command[@]}" window-position '(0, 0)'
-  "${command[@]}" window-size '(1366, 768)'
+  cd "$path"
+  ./setup-audio
+  cd - > /dev/null
 }
 
-function set-hostname {
-  local name=localhost
-  local content=$(< /etc/hostname)
-  [[ $content == $name ]] || sudo hostnamectl set-hostname "$name"
+function fix-touchpad {
+  local path=/etc/libinput
+  sudo mkdir -p "$path"
+  sudo tee "$path"/local-overrides.quirks > /dev/null << \EOF
+[PIXA Touchpad]
+MatchName=*PIXA*Touchpad*
+AttrResolutionHint=31x31
+AttrPressureRange=10:8
+EOF
 }
 
 function set-plymouth-theme {
-  local name=spinner
-  sudo sed -i 's/^\(WatermarkHorizontalAlignment=\).*/\12/' /usr/share/plymouth/themes/"$name"/"$name".plymouth
+  local name=details
   grep -q "^Theme=$name$" /etc/plymouth/plymouthd.conf || sudo plymouth-set-default-theme -R "$name"
 }
 
-function setup-waydroid {
-  local url=https://ota.waydro.id
-  ls /var/lib/waydroid/images/{system,vendor}.img &> /dev/null || sudo waydroid init -c "$url"/system -s GAPPS -v "$url"/vendor
-
-  local line=qemu.hw.mainkeys=1
-  local path=/var/lib/waydroid/waydroid_base.prop
-  grep -Fqx "$line" "$path" || sudo tee -a "$path" > /dev/null <<< "$line"
-}
-
-function symlink-vim {
-  local path
-  for path in /usr/local/bin/vi{,m}; do
-    sudo ln -fs /usr/bin/vimx "$path"
-  done
-}
-
-function turn-off-bluetooth {
-  local name=bluetooth
-  rfkill -o TYPE,SOFT | grep -q "^$name\s*blocked$" || rfkill block "$name"
-}
-
 function configure-system {
-  add-printer
-  configure-gdm
+  block-bluetooth
   configure-grub
-  disable-lid-wakeup
+  configure-power-key
+  enable-autologin
   enable-dnf-automatic
-  enable-ntp
-  fix-adb-permissions
-  fix-battery-state
-  fix-facetimehd
-  set-graphical-target
-  set-gsettings
-  set-hostname
+  enable-seatd
+  fix-audio
+  fix-touchpad
   set-plymouth-theme
-  setup-waydroid
-  symlink-vim
-  turn-off-bluetooth
 }
 
-function mount-key {
+function mount-keys {
   ! mountpoint -q "$keys" || return 0
 
-  local name=${keys##*/}
-  local path=$(readlink -f /dev/disk/by-label/"$name")
+  local label=${keys##*/}
+  local path=$(readlink -f /dev/disk/by-label/"$label")
   gio mount -d "$path"
 }
 
@@ -410,10 +234,11 @@ function copy-ssh-key {
   local path=~/.ssh/id_rsa
   [[ ! -f $path ]] || return 0
 
+  mount-keys
+
   local directory=${path%/*}
   mkdir -p "$directory"
 
-  mount-key
   local key=$keys/${path##*/}
   cp "$key" "$path"
   chmod 600 "$path"
@@ -478,23 +303,6 @@ function copy-netrc {
   [[ -f $path ]] || scp personal:"$relative_path" "$path"
 }
 
-function create-npm-lib {
-  mkdir -p ~/.npm/lib
-}
-
-function disable-app-folders {
-  local name='X-GNOME-Utilities;'
-  while IFS= read -r path; do
-    local directory=~/.local/share/applications
-    mkdir -p "$directory"
-
-    local target=$directory/${path##*/}
-    cp "$path" "$target"
-
-    sed -i "s/\b$name//" "$target"
-  done < <(grep -lr "^Categories=.*\b$name" /usr/share/applications)
-}
-
 function download-dictionaries {
   local path=~/.stardict/dic
   ! ls "$path"/* &> /dev/null || return 0
@@ -509,21 +317,12 @@ function harden-bash-history {
   sudo chattr +a "$path"
 }
 
-function hide-desktop-entries {
-  local path=~/.local/share/applications
-  mkdir -p "$path"
-
-  local name
-  for name in gvim htop org.codeberg.dnkl.foot{-server,client} org.gnome.Tour scrcpy-console vifm waydroid.{com.android.{calculator2,camera2,contacts,deskclock,documentsui,gallery3d,inputmethod.latin,settings,vending},org.adaway,org.lineageos.{eleven,etar,jelly,recorder}}; do
-    truncate -s 0 "$path"/"$name".desktop
-  done
-}
-
 function import-gpg-key {
   local path=~/.gnupg
   ! ls "$path"/private-keys-v1.d/*.key &> /dev/null || return 0
 
-  mount-key
+  mount-keys
+
   gpg --import "$keys"/private-key.asc
 
   local output="$(gpg -k --with-colons | grep -Po -m 1 '(?<=^fpr:::::::::)[^:]+'):6:"
@@ -532,22 +331,19 @@ function import-gpg-key {
   chmod 700 "$path"
 }
 
-function sort-downloads-directory {
-  local command=(gio set ~/Downloads)
-  "${command[@]}" metadata::nautilus-icon-view-sort-by date_modified
-  "${command[@]}" metadata::nautilus-icon-view-sort-reversed true
-}
-
 function setup-home {
   clone-repositories
   copy-netrc
-  create-npm-lib
-  disable-app-folders
   download-dictionaries
   harden-bash-history
-  hide-desktop-entries
   import-gpg-key
-  sort-downloads-directory
+}
+
+function confirm-reboot {
+  [[ $TERM == linux && $XDG_VTNR == 1 ]] || return 0
+
+  read -p 'Reboot? [Y/n] '
+  [[ ! $REPLY =~ ^[Yy]*$ ]] || sudo reboot
 }
 
 function main {
@@ -556,6 +352,7 @@ function main {
   copy-ssh-key
   clone-dotfiles
   setup-home
+  confirm-reboot
 }
 
 [[ ${BASH_SOURCE[0]} != $0 ]] || main "$@"
