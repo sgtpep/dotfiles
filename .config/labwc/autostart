@@ -1,0 +1,17 @@
+wl-paste -t text -w clipman store --histpath="$XDG_RUNTIME_DIR"/clipman.json --max-items=1 &
+
+wlr-randr --output=eDP-1 --scale=1.2 &
+
+{
+  path=~/.local/state/audio-setup
+  if [[ ! -f $path ]]; then
+    systemctl start --user pipewire
+    sleep 1
+
+    pactl set-default-sink alsa_output.pci-0000_00_1f.3-platform-adl_rt5682_def.HiFi__Headphones__sink
+    pactl set-default-source alsa_input.pci-0000_00_1f.3-platform-adl_rt5682_def.HiFi__Mic2__source
+    pactl set-source-volume @DEFAULT_SOURCE@ 300%
+
+    touch "$path"
+  fi
+} &

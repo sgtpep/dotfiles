@@ -14,3 +14,5 @@ path=~/.bash_profile_local
 unset path
 
 . ~/.bashrc
+
+[[ $TERM != linux || $XDG_VTNR != 1 ]] || exec labwc &> ~/.local/state/labwc.log

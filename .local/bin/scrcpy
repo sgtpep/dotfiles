@@ -1,4 +1,0 @@
-#!/bin/bash
-set -eu
-
-exec /usr/bin/scrcpy -fw --video-encoder=OMX.google.h264.encoder "$@"

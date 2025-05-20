@@ -13,8 +13,6 @@ else
   trap on-exit EXIT
 fi
 
-command=(chromium-browser)
-
 function write-file {
   local path=$1
 
@@ -32,7 +30,7 @@ while [[ -s $path ]]; do
 
   urls=$(head -n "$limit" "$path")
 
-  setsid xargs -r -d '\n' "${command[@]}" <<< "$urls" &> /dev/null &
+  setsid xargs -r -d '\n' x-www-browser <<< "$urls" &> /dev/null &
   sleep 0.1
 
   log=$path.log
