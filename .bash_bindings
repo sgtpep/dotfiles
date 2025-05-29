@@ -29,7 +29,6 @@ bind '"\C-gT": "\C-e\C-ugit stash pop \n"'
 
 bind '"\C-gu": "\C-e\C-ugit pull --stat \n"'
 
-bind '"\C-xM": "\C-e\C-umount -u \n"'
 bind '"\C-xf": "\C-e\C-uvifm \n"'
 bind '"\C-xl": "\C-e\e\\ |& less \n"'
 bind '"\C-xm": "\C-e\C-umount \n"'

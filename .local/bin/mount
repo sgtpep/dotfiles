@@ -2,48 +2,38 @@
 set -eu
 
 output=$(gio mount -il)
-gvfs=~/.gvfs
 
-if [[ ${1-} == -u ]]; then
-  paths=(/run/media/"$USER"/*)
-  ! mountpoint -q "${paths[0]}" || gio mount -e "${paths[@]}"
-
-  paths=("$gvfs"/*)
-  if [[ -d ${paths[0]} ]]; then
-    names=("${paths[@]##*/}")
-    roots=("${names[@]/:host=/://}")
-    gio mount -u "${roots[@]}"
-    echo "Unmounted ${roots[@]}"
-  fi
-
-  exit
-fi
-
-can_mount=can_mount=1
-can_eject=can_eject=1
-readarray -t paths < <(
-  grep "unix-device:\|$can_mount\|$can_eject" <<< "$output" | \
+device=$(
+	prefix=unix-device:
+	mount=can_mount=1
+	eject=can_eject=1
+  grep "$prefix\|$mount\|$eject" <<< "$output" | \
     tr -d $' \'' | \
     sed -z 's/\n\(can_\)/ \1/g' | \
-    grep -Po "(?<=:).+?(?= $can_mount $can_eject)"
+    grep -Po -m 1 "(?<=$prefix).+?(?= $mount $eject)" || :
 )
-for path in "${paths[@]}"; do
-  gio mount -d "$path"
-  echo "Mounted $path"
-done
+if [[ $device ]]; then
+  gio mount -d "$device"
 
-readarray -t roots < <(grep -Po '(?<=activation_root=).+' <<< "$output")
-if [[ ${roots[@]} ]]; then
-  if ! mountpoint -q "$gvfs"; then
-    mkdir -p "$gvfs"
-    /usr/libexec/gvfsd-fuse "$gvfs"
-  fi
-
-  for root in "${roots[@]}"; do
-    path=$gvfs/${root/:\/\//:host=}
-    [[ ! -d $path ]] || continue
+	path=$(/usr/sbin/mount | grep -Po "(?<=^$device on )[^ ]+")
+else
+	root=$(grep -Po -m 1 '(?<=activation_root=).+' <<< "$output" || :)
+	if [[ $root ]]; then
+    gvfs=~/.gvfs
+    if ! mountpoint -q "$gvfs"; then
+      mkdir -p "$gvfs"
+      /usr/libexec/gvfsd-fuse "$gvfs"
+    fi
 
     gio mount "$root"
-    echo "Mounted $root"
-  done
+
+		path=$gvfs/${root/:\/\//:host=}
+  fi
 fi
+
+[[ -v path ]] || exit 0
+
+vifm "$path" || :
+
+[[ ! ${device-} ]] || gio mount -e "$path"
+[[ ! ${root-} ]] || gio mount -u "$root"

@@ -18,10 +18,8 @@ filextype <image/*> bash -c $'set -eu; readarray -t paths < <(find "${1%%/*}" -m
 filextype <*> gio open %f %i &
 
 nnoremap <silent> E :edit<CR>
-nnoremap <silent> gM :cd ~/.gvfs<CR>
 nnoremap <silent> gd :cd ~/Downloads<CR>
 nnoremap <silent> gh :cd ~<CR>
-nnoremap <silent> gm :cd /run/media/$USER<CR>
 nnoremap yd :!echo -n %f:p:h | wl-copy<CR>
 nnoremap yn :!echo -n %f | wl-copy<CR>
 nnoremap yp :!echo -n %f:p | wl-copy<CR>

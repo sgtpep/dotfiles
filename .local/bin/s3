@@ -7,9 +7,7 @@ path=$XDG_RUNTIME_DIR/${0##*/}/$bucket
 
 . rename-window
 
-if mountpoint -q "$path"; then
-  mounted=true
-else
+if ! mountpoint -q "$path"; then
   output="$(pass aws)"
   eval "$output"
 
@@ -19,11 +17,13 @@ else
   until mountpoint -q "$path"; do
     sleep 1
   done
+
+  mounted=true
 fi
 
 vifm "$path" || :
 
-[[ ! -v mounted ]] || exit
+[[ -v mounted ]] || exit 0
 
 until fusermount -u "$path"; do
   sleep 1
