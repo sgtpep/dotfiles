@@ -145,8 +145,7 @@ function open-url {
     return
   fi
 
-  setsid gio open "$url" &> /dev/null &
-  sleep 0.1
+  gio open "$url" &> /dev/null
 }
 
 function main {

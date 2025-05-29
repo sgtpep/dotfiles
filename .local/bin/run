@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eu
+
+command=${0##*/}
+output=$(rlwrap -co -C "$command" -S '> ' -b '' -f <(dmenu_path 2> /dev/null) -g '^ ' -s 10000 -w 0 head -n 1)
+[[ $output ]] || exit 0
+
+eval setsid "$output" &> /dev/null &
+sleep 0.1

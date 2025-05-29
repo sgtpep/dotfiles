@@ -1,17 +1,7 @@
 #!/bin/bash
 set -eu
 
-lock=/tmp/${0##*/}
-if [[ ${FLOCK-} != $0 ]]; then
-  FLOCK=$0 exec flock "$lock" bash -"$-" "$0" "$@"
-else
-  function on-exit {
-    local status=$?
-    rm -f "$lock"
-    return "$status"
-  }
-  trap on-exit EXIT
-fi
+[[ ${FLOCKER-} == $0 ]] || FLOCKER=$0 exec flock "$0" bash -"$-" "$0" "$@"
 
 function write-file {
   local path=$1
@@ -30,8 +20,7 @@ while [[ -s $path ]]; do
 
   urls=$(head -n "$limit" "$path")
 
-  setsid xargs -r -d '\n' x-www-browser <<< "$urls" &> /dev/null &
-  sleep 0.1
+  xargs -r -d '\n' gio open <<< "$urls" &> /dev/null
 
   log=$path.log
   echo "$urls" >> "$log"

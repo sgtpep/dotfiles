@@ -1,5 +1,0 @@
-#!/bin/bash
-set -eu
-
-title=${1-}
-exec foot ${title+-T "$title"} -- "$@"

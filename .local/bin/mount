@@ -4,9 +4,9 @@ set -eu
 output=$(gio mount -il)
 
 device=$(
-	prefix=unix-device:
-	mount=can_mount=1
-	eject=can_eject=1
+  prefix=unix-device:
+  mount=can_mount=1
+  eject=can_eject=1
   grep "$prefix\|$mount\|$eject" <<< "$output" | \
     tr -d $' \'' | \
     sed -z 's/\n\(can_\)/ \1/g' | \
@@ -16,9 +16,13 @@ if [[ $device ]]; then
   gio mount -d "$device"
 
 	path=$(/usr/sbin/mount | grep -Po "(?<=^$device on )[^ ]+")
+  if [[ ! $path ]]; then
+    paths=(/run/media/"$USER"/*)
+    path=${paths[0]}
+  fi
 else
-	root=$(grep -Po -m 1 '(?<=activation_root=).+' <<< "$output" || :)
-	if [[ $root ]]; then
+  root=$(grep -Po -m 1 '(?<=activation_root=).+' <<< "$output" || :)
+  if [[ $root ]]; then
     gvfs=~/.gvfs
     if ! mountpoint -q "$gvfs"; then
       mkdir -p "$gvfs"
@@ -27,7 +31,7 @@ else
 
     gio mount "$root"
 
-		path=$gvfs/${root/:\/\//:host=}
+    path=$gvfs/${root/:\/\//:host=}
   fi
 fi
 

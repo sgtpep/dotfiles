@@ -15,5 +15,4 @@ fi
 
 mv "$path" "$destination"
 
-setsid gio open "$destination" &> /dev/null &
-sleep 0.1
+gio open "$destination" &> /dev/null

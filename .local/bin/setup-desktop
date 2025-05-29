@@ -27,6 +27,7 @@ function install-packages {
     curl
     default-fonts-core-emoji
     dejavu-sans-mono-fonts
+    dmenu
     dnf5-plugin-automatic
     ffmpeg
     file
@@ -61,9 +62,11 @@ function install-packages {
     python3-pip
     rclone fuse
     ripgrep
+    rlwrap
     rsync
     sdcv
     seatd
+    simple-scan
     sqlite
     sshuttle
     swayidle
@@ -126,6 +129,15 @@ function install-dependencies {
 
   install-external-packages
   install-pip-packages
+}
+
+function add-printer {
+  local name=EPSON_ET-3710_Series
+  ! lpstat -p "$name" &>/dev/null || return 0
+
+  local uri=ipps://"${name//_/%20}"._ipps._tcp.local/
+  sudo lpadmin -m lsb/usr/epson-inkjet-printer-escpr2/Epson/Epson-ET-3710_Series-epson-inkjet-printer-escpr2.ppd.gz -p "$name" -v "$uri" -E
+  sudo lpadmin -d "$name"
 }
 
 function block-bluetooth {
@@ -211,6 +223,7 @@ function set-plymouth-theme {
 }
 
 function configure-system {
+  add-printer
   block-bluetooth
   configure-grub
   configure-power-key
@@ -303,6 +316,10 @@ function copy-netrc {
   [[ -f $path ]] || scp personal:"$relative_path" "$path"
 }
 
+function disable-animations {
+  gsettings set org.gnome.desktop.interface enable-animations false
+}
+
 function download-dictionaries {
   local path=~/.stardict/dic
   ! ls "$path"/* &> /dev/null || return 0
@@ -334,6 +351,7 @@ function import-gpg-key {
 function setup-home {
   clone-repositories
   copy-netrc
+  disable-animations
   download-dictionaries
   harden-bash-history
   import-gpg-key
