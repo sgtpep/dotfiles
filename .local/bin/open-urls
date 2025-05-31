@@ -20,7 +20,7 @@ while [[ -s $path ]]; do
 
   urls=$(head -n "$limit" "$path")
 
-  xargs -r -d '\n' gio open <<< "$urls" &> /dev/null
+  run-background xargs -r -d '\n' chromium-browser <<< "$urls"
 
   log=$path.log
   echo "$urls" >> "$log"

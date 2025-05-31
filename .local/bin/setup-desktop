@@ -71,6 +71,7 @@ function install-packages {
     sshuttle
     swayidle
     swayimg
+    swaylock
     tar
     tmux
     unzip
@@ -81,7 +82,6 @@ function install-packages {
     which
     wl-clipboard
     wlopm
-    wlr-randr
     zip
   )
   rpm -q "${names[@]}" > /dev/null || sudo dnf -y install "${names[@]}"

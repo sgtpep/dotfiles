@@ -1,3 +1,5 @@
-XKB_DEFAULT_MODEL=custom
+CHROMIUM_USER_FLAGS=--animation-duration-scale=0 --disable-smooth-scrolling --enable-features=WaylandPerSurfaceScale,WaylandUiScale --force-device-scale-factor=1.2 --gtk-version=4 --ozone-platform=wayland
+XCURSOR_SIZE=30
 XKB_DEFAULT_LAYOUT=us,ru
+XKB_DEFAULT_MODEL=custom
 XKB_DEFAULT_OPTIONS=ctrl:swap_lwin_lctl,grp:rctrl_switch,grp:rshift_toggle,lv3:ralt_switch,misc:typo

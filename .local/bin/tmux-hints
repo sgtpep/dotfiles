@@ -145,7 +145,7 @@ function open-url {
     return
   fi
 
-  gio open "$url" &> /dev/null
+  run-background gio open "$url"
 }
 
 function main {

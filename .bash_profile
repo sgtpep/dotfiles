@@ -1,4 +1,3 @@
-export CHROMIUM_USER_FLAGS='--animation-duration-scale=0 --disable-smooth-scrolling --ozone-platform=wayland'
 export EDITOR=vim
 export LESS='-FKRXi -j 3'
 export MANWIDTH=80
@@ -16,4 +15,4 @@ unset path
 
 . ~/.bashrc
 
-[[ $TERM != linux || $XDG_VTNR != 1 ]] || exec labwc &> ~/.local/state/labwc.log
+[[ $TERM != linux || $XDG_VTNR != 1 ]] || exec labwc &> "$XDG_RUNTIME_DIR"/labwc.log

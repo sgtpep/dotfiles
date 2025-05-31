@@ -15,4 +15,4 @@ fi
 
 mv "$path" "$destination"
 
-gio open "$destination" &> /dev/null
+run-background gio open "$destination"
