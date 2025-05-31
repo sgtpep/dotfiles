@@ -1,18 +1,19 @@
 #!/bin/bash
 set -eu
 
-[[ ${FLOCKER-} == $0 ]] || FLOCKER=$0 exec flock -en "$0" bash -"$-" "$0" "$@"
-
 paths=(/sys/class/power_supply/*/capacity)
 path=${paths[0]}
 status_path=${path%/*}/status
 [[ -f $path && -f $status_path ]] || exit 1
 
-interval=3
-timeout=$((interval * 60 * 1000))
 while :; do
   capacity=$(< "$path")
-  ((capacity > 5)) || [[ $(< "$status_path") == Charging ]] || notify-send -t "$interval" -u critical 'Low battery...'
-  ((capacity > 3)) || systemctl suspend
-  sleep "$interval"m
+  if ((capacity <= 5)); then
+    systemctl suspend
+  elif ((capacity <= 7)); then
+    status=$(< "$status_path")
+    [[ $status == Charging ]] || notify-send -u critical 'Low battery...'
+  fi
+
+  sleep 1m
 done

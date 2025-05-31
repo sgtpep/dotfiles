@@ -1,0 +1,5 @@
+#!/bin/bash
+set -eu
+
+set -- ${CHROMIUM_USER_FLAGS-} "$@"
+exec /usr/bin/google-chrome "$@"

@@ -1,7 +1,17 @@
 #!/bin/bash
 set -eu
 
-[[ ${FLOCKER-} == $0 ]] || FLOCKER=$0 exec flock "$0" bash -"$-" "$0" "$@"
+lock=$XDG_RUNTIME_DIR/${0##*/}.lock
+if [[ ! -v FLOCK ]]; then
+  FLOCK=true exec flock "$lock" bash -"$-" "$0" "$@"
+else
+  function on-exit {
+    local status=$?
+    rm -f "$lock"
+    return "$status"
+  }
+  trap on-exit EXIT
+fi
 
 function write-file {
   local path=$1
@@ -20,7 +30,7 @@ while [[ -s $path ]]; do
 
   urls=$(head -n "$limit" "$path")
 
-  xargs -r -d '\n' gio open <<< "$urls" &> /dev/null
+  run-background xargs -r -a <(echo "$urls") -d '\n' chromium-browser
 
   log=$path.log
   echo "$urls" >> "$log"

@@ -1,0 +1,93 @@
+<labwc_config>
+  <placement>
+    <policy>center</policy>
+  </placement>
+
+  <theme>
+    <font>
+      <size>12</size>
+    </font>
+  </theme>
+
+  <windowSwitcher show="no" preview="yes" outlines="no" />
+
+  <keyboard>
+    <layoutScope>window</layoutScope>
+
+    <keybind key="A-C-m">
+      <action name="Maximize" />
+    </keybind>
+    <keybind key="A-C-q">
+      <action name="Close" />
+    </keybind>
+    <keybind key="A-C-t">
+      <action name="ForEach">
+        <query identifier="foot" />
+        <then>
+          <action name="Raise" />
+          <action name="Focus" />
+        </then>
+        <none>
+          <action name="Execute" command="foot" />
+        </none>
+      </action>
+    </keybind>
+    <keybind key="A-C-w">
+      <action name="ForEach">
+        <query identifier="chromium-browser" />
+        <then>
+          <action name="Raise" />
+          <action name="Focus" />
+        </then>
+        <none>
+          <action name="Execute" command="chromium-browser" />
+        </none>
+      </action>
+    </keybind>
+    <keybind key="A-Escape">
+      <action name="Iconify" />
+    </keybind>
+    <keybind key="A-Tab">
+      <action name="NextWindow" />
+    </keybind>
+    <keybind key="W-l">
+      <action name="Execute" command="sh -c 'swaylock -fu; systemctl suspend'" />
+    </keybind>
+    <keybind key="W-m">
+      <action name="MoveToOutput" direction="right" wrap="yes" />
+    </keybind>
+    <keybind key="XF86_AudioMute">
+      <action name="Execute" command="sh -c 'pactl set-sink-mute @DEFAULT_SINK@ yes; pactl set-sink-volume @DEFAULT_SINK@ 0; pactl set-source-mute @DEFAULT_SOURCE@ yes'" />
+    </keybind>
+    <keybind key="XF86_AudioLowerVolume">
+      <action name="Execute" command="sh -c 'pactl set-sink-mute @DEFAULT_SINK@ no; pactl set-sink-volume @DEFAULT_SINK@ -10%; pactl set-source-mute @DEFAULT_SOURCE@ no'" />
+    </keybind>
+    <keybind key="XF86_AudioRaiseVolume">
+      <action name="Execute" command="sh -c 'pactl set-sink-mute @DEFAULT_SINK@ no; pactl set-sink-volume @DEFAULT_SINK@ +10%; pactl set-source-mute @DEFAULT_SOURCE@ no'" />
+    </keybind>
+    <keybind key="XF86_MonBrightnessUp">
+      <action name="Execute" command="brightnessctl -e set 5%+" />
+    </keybind>
+    <keybind key="XF86_MonBrightnessDown">
+      <action name="Execute" command="brightnessctl -e set 5%-" />
+    </keybind>
+  </keyboard>
+
+  <mouse>
+    <default />
+
+    <context name="Root">
+      <mousebind button="Left" action="Press" />
+      <mousebind button="Right" action="Press" />
+      <mousebind button="Middle" action="Press" />
+    </context>
+  </mouse>
+
+  <libinput>
+    <device category="default">
+      <naturalScroll>yes</naturalScroll>
+      <clickMethod>clickfinger</clickMethod>
+      <scrollFactor>0.375</scrollFactor>
+    </device>
+  </libinput>
+</labwc_config>

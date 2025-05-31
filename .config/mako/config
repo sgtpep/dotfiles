@@ -1,6 +1,6 @@
 background-color=#000000
 border-size=0
-default-timeout=3000
+default-timeout=5000
 font=monospace 21px
 layer=overlay
 margin=0

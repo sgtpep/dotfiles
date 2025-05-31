@@ -71,6 +71,7 @@ function install-packages {
     sshuttle
     swayidle
     swayimg
+    swaylock
     tar
     tmux
     unzip
@@ -81,7 +82,6 @@ function install-packages {
     which
     wl-clipboard
     wlopm
-    wlr-randr
     zip
   )
   rpm -q "${names[@]}" > /dev/null || sudo dnf -y install "${names[@]}"
@@ -310,14 +310,16 @@ function clone-repositories {
   add-pass-hook "$path"
 }
 
+function configure-gsettings {
+  gsettings set org.gnome.desktop.interface enable-animations false
+  gsettings set org.gtk.Settings.FileChooser sort-column modified
+  gsettings set org.gtk.Settings.FileChooser sort-order descending
+}
+
 function copy-netrc {
   local path=~/.netrc
   local relative_path=${path#~/}
   [[ -f $path ]] || scp personal:"$relative_path" "$path"
-}
-
-function disable-animations {
-  gsettings set org.gnome.desktop.interface enable-animations false
 }
 
 function download-dictionaries {
@@ -350,8 +352,8 @@ function import-gpg-key {
 
 function setup-home {
   clone-repositories
+  configure-gsettings
   copy-netrc
-  disable-animations
   download-dictionaries
   harden-bash-history
   import-gpg-key
