@@ -1,0 +1,4 @@
+#!/bin/bash
+set -eu
+
+exec /usr/bin/scrcpy -Kfw --video-encoder=OMX.google.h264.encoder "$@"
