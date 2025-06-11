@@ -1,0 +1,22 @@
+[global]
+font = monospace 25px
+frame_width = 0
+offset = (0, 0)
+padding = 3
+separator_color = foreground
+width = (0, 300)
+
+[urgency_low]
+background = "#000000"
+foreground = "#ffffff"
+timeout = 5
+
+[urgency_normal]
+background = "#000000"
+foreground = "#ffffff"
+timeout = 5
+
+[urgency_critical]
+background = "#ff0000"
+foreground = "#ffffff"
+timeout = 10

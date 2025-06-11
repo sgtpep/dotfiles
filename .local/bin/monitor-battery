@@ -12,7 +12,7 @@ while :; do
     systemctl suspend
   elif ((capacity <= 7)); then
     status=$(< "$status_path")
-    [[ $status == Charging ]] || notify-send -t 10000 -u critical 'Low battery...'
+    [[ $status == Charging ]] || notify-send -u critical 'Low battery...'
   fi
 
   sleep 1m

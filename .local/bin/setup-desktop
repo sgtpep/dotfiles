@@ -29,6 +29,7 @@ function install-packages {
     dejavu-sans-mono-fonts
     dmenu
     dnf5-plugin-automatic
+    dunst
     ffmpeg
     file
     findutils
@@ -47,7 +48,6 @@ function install-packages {
     labwc
     liberation-fonts-all
     libnotify
-    mako
     man-db
     mutt
     ncdu
