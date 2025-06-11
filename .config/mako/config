@@ -5,3 +5,6 @@ font=monospace 21px
 layer=overlay
 margin=0
 padding=3
+
+[urgency=critical]
+background-color=#ff0000
