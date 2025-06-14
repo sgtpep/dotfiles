@@ -39,6 +39,7 @@ fi
 
 cd "$path"
 vifm || :
+cd - > /dev/null
 
 [[ ! ${device-} ]] || gio mount -e "$path"
 [[ ! ${root-} ]] || gio mount -u "$root"
