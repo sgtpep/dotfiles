@@ -1,11 +1,17 @@
 [general]
 size = fullscreen
 
-[viewer]
-window = #000000
+[info]
+show = no
 
 [gallery]
 window = #000000
 
-[info]
-show = no
+[viewer]
+window = #000000
+
+[keys.viewer]
+1 = exec exiftran -1i "%"
+2 = exec exiftran -2i "%"
+9 = exec exiftran -9i "%"
+Shift+Space = prev_file

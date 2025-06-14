@@ -35,7 +35,10 @@ else
   fi
 fi
 
-[[ -v path ]] || exit 0
+if [[ ! -v path ]]; then
+  /usr/bin/mount
+  exit 0
+fi
 
 cd "$path"
 vifm || :
