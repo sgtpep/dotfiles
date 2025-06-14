@@ -30,6 +30,7 @@ function install-packages {
     dmenu
     dnf5-plugin-automatic
     dunst
+    fbida
     ffmpeg
     file
     findutils

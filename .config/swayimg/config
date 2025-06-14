@@ -1,11 +1,26 @@
 [general]
 size = fullscreen
 
+[info]
+show = no
+
+[list]
+all = yes
+fsmon = no
+
+[gallery]
+fill = no
+window = #000000
+
 [viewer]
 window = #000000
 
-[gallery]
-window = #000000
-
-[info]
-show = no
+[keys.viewer]
+1 = exec exiftran -1i "%"; reload; exec echo -n Rotated
+2 = exec exiftran -2i "%"; reload; exec echo -n Rotated
+9 = exec exiftran -9i "%"; reload; exec echo -n Rotated
+BackSpace = prev_file
+Shift+Space = prev_file
+d = exec gio trash "%"; skip_file; exec echo -n Removed
+e = exec gimp "%"; reload
+y = exec wl-copy -n <<< "%" && echo -n Copied
