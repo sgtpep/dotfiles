@@ -3,4 +3,4 @@
 name=${0##*/}
 tmux rename-window "$name"
 
-trap 'tmux set-option automatic-rename on' EXIT
+trap 'tmux set-option -t "$TMUX_PANE" automatic-rename on' EXIT
