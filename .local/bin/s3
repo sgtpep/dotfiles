@@ -21,9 +21,7 @@ if ! mountpoint -q "$path"; then
   mounted=true
 fi
 
-cd "$path"
-vifm || :
-cd - > /dev/null
+bash -i -c 'vifm "$1"' -- "$path" || :
 
 [[ -v mounted ]] || exit 0
 

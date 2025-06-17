@@ -37,9 +37,7 @@ fi
 
 [[ -v path ]] || exit 0
 
-cd "$path"
-vifm || :
-cd - > /dev/null
+bash -i -c 'vifm "$1"' -- "$path" || :
 
 [[ ! ${device-} ]] || gio mount -e "$path"
 [[ ! ${root-} ]] || gio mount -u "$root"
