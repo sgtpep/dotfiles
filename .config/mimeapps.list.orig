@@ -1,11 +1,11 @@
 [Default Applications]
 application/pdf=chromium-browser.desktop
 application/xhtml+xml=chromium-browser.desktop
-audio/mpeg=chromium-browser.desktop
+audio/mpeg=mpv.desktop
 image/gif=swayimg.desktop
 image/jpeg=swayimg.desktop
 image/png=swayimg.desktop
 text/html=chromium-browser.desktop
-video/mp4=chromium-browser.desktop
+video/mp4=mpv.desktop
 x-scheme-handler/http=chromium-browser.desktop
 x-scheme-handler/https=chromium-browser.desktop

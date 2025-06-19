@@ -50,6 +50,7 @@ function install-packages {
     liberation-fonts-all
     libnotify
     man-db
+    mpv
     mutt
     ncdu
     nodejs
