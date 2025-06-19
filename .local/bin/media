@@ -39,5 +39,9 @@ fi
 
 bash -i -c 'vifm "$1"' -- "$path" || :
 
-[[ ! ${device-} ]] || gio mount -e "$path"
-[[ ! ${root-} ]] || gio mount -u "$root"
+[[ ! ${device-} ]] || command=(gio mount -e "$path")
+[[ ! ${root-} ]] || command=(gio mount -u "$root")
+
+until "${command[@]}"; do
+  sleep 1
+done
