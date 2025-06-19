@@ -1,9 +1,6 @@
 [general]
 size = fullscreen
 
-[info]
-show = no
-
 [list]
 all = yes
 fsmon = no
@@ -14,6 +11,25 @@ window = #000000
 
 [viewer]
 window = #000000
+
+[info]
+info_timeout = 0
+
+[info.gallery]
+bottom_left = name
+bottom_right = index
+top_left = none
+top_right = none
+
+[info.viewer]
+bottom_left = name
+bottom_right = index
+top_left = none
+top_right = none
+
+[keys.gallery]
+d = exec gio trash "%"; skip_file; exec echo -n Removed
+y = exec wl-copy -n <<< "%" && echo -n Copied
 
 [keys.viewer]
 1 = exec exiftran -1i "%"; reload; exec echo -n Rotated
