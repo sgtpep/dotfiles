@@ -68,6 +68,25 @@ function rename-nokia {
   done
 }
 
+function rename-whatsapp {
+  local paths=("$@")
+
+  local path
+  for path in "${paths[@]}"; do
+    [[ -f $path && $path =~ /[^-]+-([[:digit:]]{4})([[:digit:]]{2})([[:digit:]]{2})-WA0*[[:digit:]]*\.[^.]+$ ]] || continue
+
+    local base_path=${path%/*}/${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}
+    local extension=${path##*.}
+    local destination
+    for destination in "$base_path"{,_{1..1000}}."$extension"; do
+      [[ ! -f $destination ]] || continue
+
+      mv "$path" "$destination"
+      break
+    done
+  done
+}
+
 function main {
   local paths=("${@-.}")
 
@@ -85,6 +104,7 @@ function main {
     rename-dated "$directory"/*.jpg
     rename-kids-camera "$directory"/*.jpg
     rename-nokia "$directory"/*.jpg
+    rename-whatsapp "$directory"/*.jpg
   done
 }
 
