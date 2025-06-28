@@ -5,6 +5,7 @@ set dotdirs=rootparent
 set nohlsearch
 set notrash
 set statusline='%A %u:%g %d %s'
+set syscalls
 set tuioptions-=ps
 
 set ignorecase
