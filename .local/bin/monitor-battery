@@ -7,13 +7,15 @@ status_path=${path%/*}/status
 [[ -f $path && -f $status_path ]] || exit 1
 
 while :; do
+  sleep 1m
+
+  status=$(< "$status_path")
+  [[ $status != Charging ]] || continue
+
   capacity=$(< "$path")
   if ((capacity <= 5)); then
     systemctl suspend
-  elif ((capacity <= 7)); then
-    status=$(< "$status_path")
-    [[ $status == Charging ]] || notify-send -u critical 'Low battery...'
+  elif ((capacity <= 10)); then
+    notify-send -u critical 'Low battery...'
   fi
-
-  sleep 1m
 done
