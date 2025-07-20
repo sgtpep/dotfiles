@@ -15,7 +15,7 @@ device=$(
 if [[ $device ]]; then
   gio mount -d "$device"
 
-	path=$(/usr/sbin/mount | grep -Po "(?<=^$device on )[^ ]+")
+	path=$(mount | grep -Po "(?<=^$device on ).+(?= type)")
   if [[ ! $path ]]; then
     paths=(/run/media/"$USER"/*)
     path=${paths[0]}
