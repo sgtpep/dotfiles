@@ -1,0 +1,19 @@
+#!/bin/bash
+set -eu
+
+path=$1
+
+filenames=$(ls "$path" | shuf)
+
+count=$(wc -l <<< "$filenames")
+index=1
+while read -r filename; do
+  prefix=$(printf "%0${#count}d" "$index")
+  ((index++))
+
+  unprefixed_filename=$(sed 's/^[0-9]\+\. //' <<< "$filename")
+  [[ $unprefixed_filename == $filename ]] || mv "$path"/{"$filename","$unprefixed_filename"}
+
+  new_filename="$prefix. $unprefixed_filename"
+  mv "$path"/{"$unprefixed_filename","$new_filename"}
+done <<< "$filenames"
