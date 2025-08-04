@@ -1,0 +1,23 @@
+#!/bin/bash
+set -eu
+
+source=$1
+destination=$2
+
+grep=(grep -P --line-buffered)
+find "$source" -type f -exec file --mime-type {} \+ | \
+  "${grep[@]}" ' (image/jpeg|video/[\w-]+)$' | \
+  "${grep[@]}" -o '^.+(?=: )' | \
+  xargs -I {} -d '\n' bash -"$-" -c '
+  source_path=$1
+  source=$2
+  destination=$3
+
+  destination_path=$destination${source_path#$source}
+
+  directory=${destination_path%/*}
+  mkdir -p "$directory"
+
+  echo "$source_path"
+  mv "$source_path" "$destination_path"
+  ' -- {} "$source" "$destination"
