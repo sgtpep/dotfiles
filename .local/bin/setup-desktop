@@ -289,6 +289,7 @@ function clone-dotfiles {
   "${command[@]}" init
   "${command[@]}" remote add origin https://github.com/sgtpep/dotfiles.git
   "${command[@]}" pull origin master
+  "${command[@]}" config status.showUntrackedFiles no
 
   "${command[@]}" ls-files | grep -Po '.+(?=\.orig$)' | xargs -r -I {} -d '\n' cp ~/{}{.orig,}
 
