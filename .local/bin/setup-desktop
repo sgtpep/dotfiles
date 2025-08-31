@@ -288,8 +288,7 @@ function clone-dotfiles {
 
   "${command[@]}" init
   "${command[@]}" remote add origin https://github.com/sgtpep/dotfiles.git
-  "${command[@]}" fetch
-  "${command[@]}" checkout -f master
+  "${command[@]}" pull origin master
 
   "${command[@]}" ls-files | grep -Po '.+(?=\.orig$)' | xargs -r -I {} -d '\n' cp ~/{}{.orig,}
 
