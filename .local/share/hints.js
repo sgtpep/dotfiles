@@ -143,7 +143,7 @@ const main = () => {
     event.stopPropagation();
 
     showHints();
-  });
+  }, true);
 };
 
 main();
