@@ -1,4 +1,4 @@
-alias copy='wl-copy'
+alias copy=wl-copy
 alias cp='cp -i'
 alias dd='dd bs=4M oflag=sync status=progress'
 alias df='df -h'
@@ -13,6 +13,7 @@ alias rm='rm -I'
 alias serve='python -m http.server'
 alias sshuttle='sshuttle -r personal --dns 0/0'
 alias sudo='sudo '
+alias vi=vim
 alias watch='watch '
 
 function less {
