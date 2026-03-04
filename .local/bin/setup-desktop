@@ -14,7 +14,7 @@ function install-packages {
   local names=(
     ImageMagick
     acpi
-    alsa-sof-firmware alsa-ucm
+    alsa-{sof-firmware,ucm,utils}
     android-tools
     bash
     bash-completion
@@ -209,9 +209,11 @@ function enable-seatd {
 }
 
 function fix-audio {
-  sudo cp /lib/firmware/intel/sof-tplg/sof-adl-{max98360a,rt1019}-rt5682.tplg.xz
-
-  [[ ! -f /etc/wireplumber/wireplumber.conf.d/51-increase-headroom.conf ]] || return 0
+  local path=/usr/lib/firmware/intel/sof-tplg/sof-adl-rt1019-rt5682.tplg
+  if [[ ! -f $path ]] then
+    local url=https://files.tree123.org/${path##*/}
+    curl "$url" | sudo tee "$path" > /dev/null
+  fi
 
   local temp=/tmp
   local name=chromebook-linux-audio
