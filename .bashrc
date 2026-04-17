@@ -23,6 +23,8 @@ history -a
 '
 
 PS1=$'$(
+  ${_PS1_COMMAND+eval "$_PS1_COMMAND"}
+
   path=$PWD/.git
   [[ -d $path && ! -f $path/.slow && $PWD != ~ ]] || exit 0
 
