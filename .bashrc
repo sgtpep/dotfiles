@@ -20,7 +20,7 @@ PROMPT_COMMAND='
 [[ $_ == 0 ]] || echo -e "\e[4mExit status: $_\e[m" >&2
 
 history -a
-'
+'$PROMPT_COMMAND
 
 PS1=$'$(
   path=$PWD/.git
