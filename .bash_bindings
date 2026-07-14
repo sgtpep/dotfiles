@@ -27,7 +27,7 @@ bind '"\C-gS": "\C-e\C-ugit stash list -p \n"'
 bind '"\C-gt": "\C-e\C-ugit stash \n"'
 bind '"\C-gT": "\C-e\C-ugit stash pop \n"'
 
-bind '"\C-gu": "\C-e\C-ugit pull --stat \n"'
+bind '"\C-gu": "\C-e\C-ugit pull --autostash --stat \n"'
 
 bind '"\C-xf": "\C-e\C-uvifm \n"'
 bind '"\C-xl": "\C-e\e\\ |& less \n"'
