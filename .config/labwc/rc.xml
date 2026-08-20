@@ -65,7 +65,7 @@
     <keybind key="A-S-Tab">
       <action name="PreviousWindow" />
     </keybind>
-    <keybind key="W-l">
+    <keybind key="A-S-W-l">
       <action name="Execute" command="sh -c 'swaylock -fu; systemctl suspend'" />
     </keybind>
     <keybind key="W-m">
