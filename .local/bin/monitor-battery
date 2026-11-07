@@ -13,9 +13,9 @@ while :; do
   [[ $status != Charging ]] || continue
 
   capacity=$(< "$path")
-  if ((capacity <= 5)); then
+  if ((capacity <= 15)); then
     systemctl suspend
-  elif ((capacity <= 10)); then
+  elif ((capacity <= 20)); then
     notify-send -u critical 'Low battery...'
   fi
 done
