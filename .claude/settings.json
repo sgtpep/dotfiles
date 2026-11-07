@@ -1,0 +1,19 @@
+{
+  "env": {
+    "CLAUDE_CODE_SCROLL_SPEED": "7",
+    "CLAUDE_CODE_SEND_FEEDBACK": "0",
+    "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION": "1"
+  },
+  "spinnerTipsEnabled": false,
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "Working"
+    ]
+  },
+  "tui": "fullscreen",
+  "theme": "light",
+  "preferredNotifChannel": "terminal_bell"
+}
