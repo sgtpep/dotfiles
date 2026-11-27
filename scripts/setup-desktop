@@ -3,11 +3,20 @@ set -eu
 
 keys=/run/media/$USER/keys
 
+function distribution-version {
+  rpm -E %fedora
+}
+
 function enable-rpm-fusion {
   [[ ! -f /etc/yum.repos.d/rpmfusion-free.repo ]] || return 0
 
-  local version=$(rpm -E %fedora)
-  sudo dnf -y install https://mirrors.rpmfusion.org/{free/fedora/rpmfusion-free,nonfree/fedora/rpmfusion-nonfree}-release-"$version".noarch.rpm
+  local version=$(distribution-version)
+  local url
+  for url in https://mirrors.rpmfusion.org/{free/fedora/rpmfusion-free,nonfree/fedora/rpmfusion-nonfree}-release-"$version".noarch.rpm; do
+    local name=${url##*/}
+    name=${name%.*}
+    rpm -q "$name" > /dev/null || sudo dnf -y install "$url"
+  done
 }
 
 function install-packages {
@@ -50,6 +59,7 @@ function install-packages {
     liberation-fonts-all
     libnotify
     man-db
+    mesa-va-drivers-freeworld
     mpv
     mutt
     ncdu
@@ -61,7 +71,7 @@ function install-packages {
     perl-Image-ExifTool
     pulseaudio-utils
     python3
-    python3-pip
+    python3-pip python3-devel gcc
     rclone fuse
     ripgrep
     rlwrap
@@ -84,34 +94,25 @@ function install-packages {
     which
     wl-clipboard
     wlopm
+    wlr-randr
     zip
   )
   rpm -q "${names[@]}" > /dev/null || sudo dnf -y install "${names[@]}"
 }
 
 function remove-packages {
-  local names=(openssh-server)
+  local names=(
+    openssh-server
+  )
   ! rpm -q "${names[@]}" > /dev/null || sudo dnf -y remove "${names[@]}"
 }
 
-function install-copr-packages {
-  declare -A repositories=(
-    [scrcpy]=zeno/scrcpy
-  )
- 
-  local name
-  for name in "${!repositories[@]}"; do
-    ! rpm -q "$name" > /dev/null || continue
- 
-    local repository=${repositories[$name]}
-    sudo dnf -y copr enable "$repository"
-    sudo dnf -y install "$name"
-  done
-}
-
 function install-external-packages {
+  local version=$(distribution-version)
+
   local -A names=(
-    [epson-inkjet-printer-escpr2]=https://download3.ebz.epson.net/dsc/f/03/00/16/90/97/553047888938560dd4d73cae951613459e2a5d5d/epson-inkjet-printer-escpr2-1.2.31-1.x86_64.rpm
+    [Sunshine]=https://github.com/LizardByte/Sunshine/releases/download/v2026.914.233613/Sunshine-2026.914.233613-1.fc"$version".x86_64.rpm
+    [epson-inkjet-printer-escpr2]=https://download-center.epson.com/f/module/4224a4a4-d0eb-449c-a7af-6770e827f526/epson-inkjet-printer-escpr2-1.2.44-1.x86_64.rpm
     [google-chrome-stable]=https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
   )
 
@@ -135,7 +136,7 @@ function install-pip-packages {
   for name in "${names[@]}"; do
     local pip=~/.pip
     local paths=("$pip"/lib/python*/site-packages/"$name"-*)
-    [[ -d ${paths[0]} ]] || PYTHONUSERBASE=$pip pip install --no-warn-script-location "$name"
+    [[ -d ${paths[0]} ]] || PYTHONUSERBASE=$pip pip install -I --no-warn-script-location "$name"
   done
 }
 
@@ -144,14 +145,29 @@ function install-dependencies {
   install-packages
   remove-packages
 
-  install-copr-packages
   install-external-packages
   install-pip-packages
+}
+
+function enable-systemd-unit {
+  local name=$1
+
+  local directory=multi-user.target.wants
+  [[ $name != *.timer ]] || directory=timers.target.wants
+
+  local path=/etc/systemd/system/$directory/$name
+  [[ $name != *.timer ]] || path=$path.service
+
+  [[ -h $path ]] || sudo systemctl enable "$name"
 }
 
 function add-printer {
   local name=EPSON_ET-3710_Series
   ! lpstat -p "$name" &>/dev/null || return 0
+
+  local service=cups
+  enable-systemd-unit "$service".service
+  sudo systemctl start "$service"
 
   local uri=ipps://"${name//_/%20}"._ipps._tcp.local/
   sudo lpadmin -m lsb/usr/epson-inkjet-printer-escpr2/Epson/Epson-ET-3710_Series-epson-inkjet-printer-escpr2.ppd.gz -p "$name" -v "$uri" -E
@@ -182,13 +198,18 @@ EOF
 }
 
 function enable-autologin {
-  local path=/etc/systemd/system/getty@tty1.service.d
+  local name=getty@tty1.service
+
+  local path=/etc/systemd/system/$name.d
   sudo mkdir -p "$path"
   sudo tee "$path"/autologin.conf > /dev/null << EOF
 [Service]
 ExecStart=
-ExecStart=-/usr/sbin/agetty -a $USER %I
+ExecStart=-/usr/bin/agetty -J -a $USER %I \$TERM
 EOF
+
+  sudo systemctl mask kmsconvt@tty1.service
+  enable-systemd-unit "$name"
 }
 
 function enable-dnf-automatic {
@@ -197,49 +218,26 @@ function enable-dnf-automatic {
 apply_updates = yes
 EOF
 
-  local name=dnf5-automatic.timer
-  [[ -h /etc/systemd/system/timers.target.wants/$name ]] || sudo systemctl enable --now "$name"
+  enable-systemd-unit dnf5-automatic.timer
 }
 
 function enable-seatd {
-  local name=seatd.service
-  [[ -h /etc/systemd/system/multi-user.target.wants/$name ]] || sudo systemctl enable --now "$name"
+  enable-systemd-unit seatd.service
 
   sudo usermod -a -G seat "$USER"
 }
 
-function fix-audio {
-  local path=/usr/lib/firmware/intel/sof-tplg/sof-adl-rt1019-rt5682.tplg
-  if [[ ! -f $path ]] then
-    local url=https://files.tree123.org/${path##*/}
-    curl "$url" | sudo tee "$path" > /dev/null
-  fi
-
-  local temp=/tmp
-  local name=chromebook-linux-audio
-  local path=$temp/$name
-  rm -fr "$path"
-  git -C "$temp" clone https://github.com/WeirdTreeThing/"$name".git
-
-  cd "$path"
-  ./setup-audio
-  cd - > /dev/null
+function enable-sunshine {
+  sudo tee /etc/modules-load.d/vkms.conf <<< vkms
 }
 
-function fix-touchpad {
-  local path=/etc/libinput
-  sudo mkdir -p "$path"
-  sudo tee "$path"/local-overrides.quirks > /dev/null << \EOF
-[PIXA Touchpad]
-MatchName=*PIXA*Touchpad*
-AttrResolutionHint=31x31
-AttrPressureRange=10:8
-EOF
-}
+function set-hostname {
+  local hostname=localhost
+  [[ $HOSTNAME != $hostname ]] || return 0
 
-function set-plymouth-theme {
-  local name=details
-  grep -q "^Theme=$name$" /etc/plymouth/plymouthd.conf || sudo plymouth-set-default-theme -R "$name"
+  sudo hostnamectl set-hostname "$hostname"
+
+  sudo sed -i '/^plugins=/a hostname-mode=none' /etc/NetworkManager/NetworkManager.conf
 }
 
 function configure-system {
@@ -250,9 +248,8 @@ function configure-system {
   enable-autologin
   enable-dnf-automatic
   enable-seatd
-  fix-audio
-  fix-touchpad
-  set-plymouth-theme
+  enable-sunshine
+  set-hostname
 }
 
 function mount-keys {
@@ -288,9 +285,12 @@ function clone-dotfiles {
   local directory=${path%/*}
   local command=(git -C "$directory")
 
+  rm -fr ~/{.bash_profile,.bashrc}
+
   "${command[@]}" init
   "${command[@]}" remote add origin https://github.com/sgtpep/dotfiles.git
   "${command[@]}" pull origin master
+  "${command[@]}" branch --set-upstream-to=origin/master master
   "${command[@]}" config status.showUntrackedFiles no
 
   "${command[@]}" ls-files | grep -Po '.+(?=\.orig$)' | xargs -r -I {} -d '\n' cp ~/{}{.orig,}

@@ -67,7 +67,7 @@ function download-dotfile {
 }
 
 function download-bookletify {
-  download-dotfile .local/bin/bookletify
+  download-dotfile scripts/bookletify
 }
 
 function upgrade-system {
@@ -203,7 +203,7 @@ function schedule-dead-letter {
 
 function schedule-generate-gallery {
   local name=generate-gallery
-  download-dotfile .local/bin/"$name"
+  download-dotfile scripts/"$name"
 
   sudo tee /etc/cron.d/"$name" > /dev/null << EOF
 PATH=/usr/bin:/bin:$HOME/.local/bin

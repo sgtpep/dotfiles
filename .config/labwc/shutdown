@@ -1,2 +1,1 @@
-pkill -f '/monitor-battery$' &
 tmux kill-server &
